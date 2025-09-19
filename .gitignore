@@ -1,0 +1,6 @@
+.DS_Store
+require.txt
+venv
+notes.md
+design*
+test*
