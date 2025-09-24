@@ -4,3 +4,6 @@ venv
 notes.md
 design*
 test*
+Docker*
+issues.md
+app/__pycache__*

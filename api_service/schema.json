@@ -4,7 +4,7 @@
     "description": "Schema for a single access request to a cloud provider.",
     "type": "object",
     "properties": {
-        "request_id": {
+        "client_request_id": {
             "description": "The unique ID for the request from the client system (e.g., a ticket number).",
             "type": "string",
             "minLength": 1
@@ -59,7 +59,7 @@
         }
     },
     "required": [
-        "request_id",
+        "client_request_id",
         "target_cloud",
         "account_id",
         "context"

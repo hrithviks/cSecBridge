@@ -29,9 +29,11 @@ Instances:
 
 import os
 
+__all__ = ['ConfigLoadError', 'initialize_config']
+
 class ConfigLoadError(Exception):
-    """Custom exception for all fatal errors during configuration load."""
-    pass
+        """Custom exception for all fatal errors during configuration load."""
+        pass
 
 class _Config:
     """
@@ -40,9 +42,11 @@ class _Config:
     """
     
     def __init__(self):
-        self._load_and_validate_env()
+        pass
 
-    # Public read-only properties
+    #############################################
+    # Read-only properties of the configuration #
+    #############################################
     @property
     def API_AUTH_TOKEN(self):
         return self._API_AUTH_TOKEN
@@ -107,6 +111,9 @@ class _Config:
     def ALLOWED_ORIGIN(self):
         return self._ALLOWED_ORIGIN
 
+    ############################
+    # Configuration validation #
+    ############################
     def _load_and_validate_env(self):
         """
         Performs the strict loading and validation of all env variables.
@@ -160,5 +167,17 @@ class _Config:
                   Ensure ports and max connections are integers. Details: {e}'
             raise ConfigLoadError(error_message) from e
 
-# Create the single, global instance that rest of the app will import and use.
-config = _Config()
+# The global config object starts as None.
+config = None
+
+def initialize_config():
+    """
+    Creates and validates the global config instance. This function should be
+    called once at application startup.
+    """
+    global config
+    if config is None:
+        config_instance = _Config()
+        config_instance._load_and_validate_env()
+        config = config_instance
+    return config

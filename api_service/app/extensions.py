@@ -21,18 +21,33 @@ it will raise an exception that will be caught by the main application entry
 point, preventing the service from starting in a faulty state.
 '''
 
+import redis
+import logging
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_cors import CORS
-import redis
-from psycopg2 import pool
+from psycopg2 import pool, OperationalError
 from config import config
+from app.errors import ExtentionError
+
+_MODULE_LOG_CONTEXT = {"module": "EXTENSIONS"}
+
+# Setup logger for the extentions module
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 # Define the public APIs of this module
-__all__ = ['limiter', 'talisman', 'cors', 'db_pool', 'redis_client']
+__all__ = ['limiter', 
+           'talisman', 
+           'cors', 
+           'db_pool', 
+           'redis_client', 
+           'ExtentionError']
 
-# Internal configuration for rate setter
+#######################################
+# Rate setter extention for Flask app #
+#######################################
 _redis_auth = f":{config.REDIS_PASSWORD}@" if config.REDIS_PASSWORD else ""
 _redis_scheme = "rediss://" if config.REDIS_SSL_ENABLED else "redis://"
 _redis_uri_for_limiter = (
@@ -40,18 +55,28 @@ _redis_uri_for_limiter = (
     f"{config.REDIS_HOST}:{config.REDIS_PORT}/0"
 )
 
-limiter = Limiter(
-    get_remote_address,
-    storage_uri=_redis_uri_for_limiter,
-    storage_options={"socket_connect_timeout": 30},
-    strategy="fixed-window",
-)
+try:
+    limiter = Limiter(
+        get_remote_address,
+        storage_uri=_redis_uri_for_limiter,
+        storage_options={"socket_connect_timeout": 30},
+        strategy="fixed-window",
+    )
+except redis.exceptions.ConnectionError as e:
+    log.error(f"Redis connection error for Flask Limiter: {str(e)}", 
+              exc_info=True, 
+              extra=_MODULE_LOG_CONTEXT)
+    raise ExtentionError(f"Redis connection error for Flask Limiter: {str(e)}") from e
 
-# Flask security extensions
+######################################
+# Security extenstions for Flask app #
+######################################
 talisman = Talisman()
 cors = CORS()
 
-# Internal configuration for database connection pool.
+#############################################
+# Postgres database extention for Flask app #
+#############################################
 _db_conn_params = {
     "host": config.POSTGRES_HOST,
     "port": config.POSTGRES_PORT,
@@ -63,11 +88,19 @@ if config.POSTGRES_SSL_ENABLED:
     _db_conn_params['sslmode'] = 'verify-full'
     _db_conn_params['sslrootcert'] = config.POSTGRES_SSL_CA_CERT
 
-db_pool = pool.ThreadedConnectionPool(1, 
-                                      config.POSTGRES_MAX_CONN,
-                                      **_db_conn_params)
+try:
+    db_pool = pool.ThreadedConnectionPool(1, 
+                                        config.POSTGRES_MAX_CONN,
+                                        **_db_conn_params)
+except ConnectionError as e:
+    log.error(f"Database connection error: {str(e)}", 
+              exc_info=True, 
+              extra=_MODULE_LOG_CONTEXT)
+    raise ExtentionError(f"Database connection error: {str(e)}") from e
 
-# Internal connection setup for redis client
+##############################
+# Redis client for Flask app #
+##############################  
 _redis_conn_params = {
     "host": config.REDIS_HOST,
     "port": config.REDIS_PORT,
@@ -78,8 +111,13 @@ _redis_conn_params = {
 if config.REDIS_SSL_ENABLED:
     _redis_conn_params['ssl'] = True
     _redis_conn_params['ssl_ca_certs'] = config.REDIS_SSL_CA_CERT
-    
-redis_client = redis.Redis(**_redis_conn_params)
 
-# Issue ping on the redis client for fail-fast approach
-redis_client.ping()
+try:
+    redis_client = redis.Redis(**_redis_conn_params)
+    # Issue ping on the redis client for fail-fast approach
+    redis_client.ping()
+except redis.exceptions.ConnectionError as e:
+    log.error(f"Redis connection error: {str(e)}", 
+              exc_info=True, 
+              extra=_MODULE_LOG_CONTEXT)
+    raise ExtentionError(f"Redis client connection error: {str(e)}") from e

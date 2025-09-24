@@ -16,44 +16,74 @@ Its primary responsibilities are:
 '''
 
 import sys
-import traceback
+import logging
 
-# Catch import errors as part of startup
+_STARTUP_CONTEXT = {"context": "SYSTEM-STARTUP"}
+
+# Default logging configuration.
 try:
-    from config import ConfigLoadError
-    from psycopg2 import OperationalError
-    from redis.exceptions import ConnectionError
+    from logging_config import setup_logging
+    setup_logging()
 except ImportError as e:
-    print(f'FATAL: A required library is not installed: {e}', file=sys.stderr)
+    # Fallback to plain text if logging config fails.
+    logging.basicConfig(level=logging.DEBUG)
+    logging.warning(f"Could not import logging_config. Falling back to basic logging. {str(e)}")
+
+# Main application process starts here
+try:
+    from config import ConfigLoadError, initialize_config
+
+    # Initialize logger
+    log = logging.getLogger(__name__)
+    log.setLevel(logging.DEBUG)
+
+    # Initialize config to load and validate environment variables
+    log.debug("Initializing configuration.", extra=_STARTUP_CONTEXT)
+    initialize_config()
+    
+    # Import and call the application factory
+    from app import create_app
+    from app.errors import ExtentionError, BackendServerError, APIServerError
+
+    log.debug("Creating application factory.", extra=_STARTUP_CONTEXT)
+    app = create_app()
+    log.debug("Application factory created.", extra=_STARTUP_CONTEXT)
+
+# Exceptions from config module
+except ConfigLoadError as e:
+    log.critical("Environment configuration validation failed.", exc_info=True, extra=_STARTUP_CONTEXT)
+    sys.exit(1)
+# Exceptions from extensions module
+except ExtentionError as e:
+    log.critical("Extension initialization failed.", exc_info=True, extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
-try:
-    # Load and create application
-    from app import create_app
-    app = create_app()
-except ConfigLoadError as e:
-    # Handle specific, known configuration errors.
-    print(f'FATAL: Configuration Error. {e}', file=sys.stderr)
+# Runtime errors during initialization
+except RuntimeError as e:
+    log.critical("Runtime error during application initialization.", exc_info=True, extra=_STARTUP_CONTEXT)
     sys.exit(1)
-except (OperationalError, ConnectionError) as e:
-    # Handle known service connection errors.
-    print(
-        f'FATAL: Could not connect to a required service (DB/Redis).'
-        f'Please check service health and connection settings. Details: {e}',
-        file=sys.stderr
-    )
+
+# Exceptions from backend module
+except BackendServerError as e:
+    log.critical("Backend service communication failed.", exc_info=True, extra=_STARTUP_CONTEXT)
     sys.exit(1)
+
+# System errors from routes module
+except APIServerError as e:
+    log.critical("Unrecoverable system errors in application routing.", exc_info=True, extra=_STARTUP_CONTEXT)
+    sys.exit(1)
+
+# Handle library import errors
+except ImportError as e:
+    log.critical("Application library import failed.", exc_info=True, extra=_STARTUP_CONTEXT)
+    sys.exit(1)
+
+# All unhandled exceptions
 except Exception as e:
-    # Handle any other unexpected exception during startup.
-    # This is likely a bug, so we print the full traceback for debugging.
-    print(
-        'FATAL: An unexpected error occurred during application startup.',
-        file=sys.stderr
-    )
-    traceback.print_exc(file=sys.stderr)
+    log.critical("Unhandled exception during application startup.", exc_info=True, extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 if __name__ == '__main__':
-
-    # Unit Testing
+    # This is for local development only.
+    # In production, a WSGI server like Gunicorn will import 'app' from this file.
     app.run(debug=True, port=5001)
