@@ -70,7 +70,7 @@ except BackendServerError as e:
 
 # System errors from routes module
 except APIServerError as e:
-    log.critical("Unrecoverable system errors in application routing.", exc_info=True, extra=_STARTUP_CONTEXT)
+    log.critical("Unrecoverable system error in application routing.", exc_info=True, extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 # Handle library import errors
@@ -84,6 +84,6 @@ except Exception as e:
     sys.exit(1)
 
 if __name__ == '__main__':
-    # This is for local development only.
-    # In production, a WSGI server like Gunicorn will import 'app' from this file.
+
+    # Unit Testing
     app.run(debug=True, port=5001)
