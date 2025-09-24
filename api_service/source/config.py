@@ -1,4 +1,4 @@
-'''
+"""
 # Configuration loader for the CSecBridge API Service.
 
 This module is responsible for loading, validating, and providing access to all
@@ -25,7 +25,7 @@ Classes:
 Instances:
     config: The singleton, read-only instance of the _Config class that the
             rest of the application should import and use.
-'''
+"""
 
 import os
 

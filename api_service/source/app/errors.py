@@ -1,5 +1,5 @@
 """
-Defines custom exceptions and registers application error handlers.
+#  Define custom exceptions and registers application error handlers.
 
 This module centralizes error handling for the application. It contains:
 1.  Definitions for custom, application-specific exceptions.

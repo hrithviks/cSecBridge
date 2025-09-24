@@ -1,4 +1,4 @@
-'''
+"""
 # Initializes all third-party extensions for the CSecBridge API Service.
 
 This module is responsible for creating and configuring all global, shared
@@ -19,7 +19,7 @@ This module adheres to a "fail-fast" principle. If a connection to a critical
 service like PostgreSQL or Redis cannot be established during initialization,
 it will raise an exception that will be caught by the main application entry
 point, preventing the service from starting in a faulty state.
-'''
+"""
 
 import redis
 import logging

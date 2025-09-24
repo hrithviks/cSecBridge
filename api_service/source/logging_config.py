@@ -1,4 +1,4 @@
-'''
+"""
 # Centralized logging configuration for the CSecBridge API Service.
 
 This module provides a setup function to configure the application's logger to
@@ -7,7 +7,11 @@ environments where logs are ingested and parsed by an observability stack.
 
 Using a unified formatter ensures that logs from application startup, request
 handling, and error reporting all share a consistent, machine-readable schema.
-'''
+
+Methods:
+    setup_logging: Configures the root logger to output structured JSON logs.
+
+"""
 
 import logging
 import sys

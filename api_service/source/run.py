@@ -1,19 +1,15 @@
-'''
+"""
 # Application entry point for the CSecBridge API Service.
 
 This script is the main executable to start the Flask application. It handles
 the crucial initial setup and error handling before the application server
 begins.
 
-Its primary responsibilities are:
-1.  Importing the application factory (`create_app`).
-2.  Wrapping the application creation in a multi-stage exception block to
-    gracefully catch fatal errors during startup. It provides specific, clear
-    error messages for different failure modes (config vs. service connection)
-    and logs a full traceback for unexpected code errors.
-3.  Creating the application instance using the factory.
-4.  Providing a simple unit testing block to run on local dev server
-'''
+Application flow:
+- Import and initialize configuration data.
+- Import and create application factory to run the Flask server.
+- Multi-stage exception handling for startup errors.
+"""
 
 import sys
 import logging

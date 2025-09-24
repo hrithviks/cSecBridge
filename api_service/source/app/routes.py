@@ -1,4 +1,4 @@
-'''
+"""
 # Defines the API routes for the CSecBridge API Service.
 
 This module uses a Flask Blueprint (`api_blueprint`) to organize all API endpoints.
@@ -12,7 +12,7 @@ It acts as the primary interface for the application, responsible for:
 API will provide data related response only.
 Custom error class will return internal errors during the excecution back to
 application factory.
-'''
+"""
 
 import uuid
 import json

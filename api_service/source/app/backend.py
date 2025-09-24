@@ -1,4 +1,4 @@
-'''
+"""
 # Data access layer for the CSecBridge API Service.
 
 This module contains all the functions responsible for interacting with the
@@ -11,7 +11,7 @@ are passed the necessary connection objects for the current request context.
 
 Error log streaming to container is only for operations that do not propagate
 exceptions to the calling module.
-'''
+"""
 
 import json
 import psycopg2
@@ -25,27 +25,27 @@ from app.errors import DBError, RedisError
 __all__ = ['create_new_request', 'get_request_by_id', 'DBError', 'RedisError']
 
 # Insert statment for requests table
-_INSERT_TO_REQUESTS = 'INSERT INTO REQUESTS \
-    (CLIENT_REQ_ID, \
-    CORRELATION_ID, \
-    ACCOUNT_ID, \
-    PRINCIPAL, \
-    ROLE, \
-    ACTION, \
-    STATUS, \
-    CLOUD_PROVIDER, \
-    REQUESTED_TIME_STAMP, \
-    LAST_UPDATED_TIME_STAMP) \
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'
+_INSERT_TO_REQUESTS = '''INSERT INTO REQUESTS
+    (CLIENT_REQ_ID,
+    CORRELATION_ID,
+    ACCOUNT_ID,
+    PRINCIPAL,
+    ROLE,
+    ACTION,
+    STATUS,
+    CLOUD_PROVIDER,
+    REQUESTED_TIME_STAMP,
+    LAST_UPDATED_TIME_STAMP)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
 
 # Insert statement for requests audit table
-_INSERT_TO_REQUESTS_AUDIT = 'INSERT INTO REQUESTS_AUDIT \
-    (CORRELATION_ID, \
-    ACTION, \
-    STATUS, \
-    ERROR_TEXT, \
-    PROCESSED_TIME_STAMP) \
-    VALUES (%s, %s, %s, %s, %s)'
+_INSERT_TO_REQUESTS_AUDIT = '''INSERT INTO REQUESTS_AUDIT
+    (CORRELATION_ID,
+    ACTION,
+    STATUS,
+    ERROR_TEXT,
+    PROCESSED_TIME_STAMP)
+    VALUES (%s, %s, %s, %s, %s)'''
 
 # Select statement to retrieve data from requests table
 _SELECT_FROM_REQUESTS = 'SELECT * FROM REQUESTS WHERE CORRELATION_ID = %s'
@@ -82,10 +82,19 @@ def create_new_request(db_conn, redis_conn, backend_data):
     Handles the transactional database insert and Redis operations for a new
     request. This function ensures that the DB is the source of truth.
 
+    Request Flow:
+    - Logs new request to "requests" table
+    - Logs the initial status to "requests_audit" table
+    - Push request data to redis queue for processing by the worker service
+    - Populate the redis cache with the initial status
+
     Args:
         db_conn: A PostgreSQL connection object from the connection pool.
         redis_conn: The Redis client instance.
         backend_data: A dictionary containing the full job details.
+
+    Returns:
+        None
     """
 
     log_context = {"correlation_id": backend_data["correlation_id"],
@@ -140,6 +149,11 @@ def get_request_by_id(db_conn, redis_conn, correlation_id):
     """
     Retrieves the status of a request, implementing the cache-aside pattern.
     It returns the raw data as a dictionary or None.
+
+    Request Flow:
+    - Check redis cache for the correlation id
+    - If cache miss, query database for status
+    - Populate cache for next run
 
     Args:
         db_conn: A PostgreSQL connection object from the connection pool.
