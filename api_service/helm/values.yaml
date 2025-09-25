@@ -1,0 +1,67 @@
+# Default values for api-service chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: csecbridge-api-service
+  pullPolicy: IfNotPresent
+  # Overridden by the chart's appVersion by default.
+  tag: ""
+
+# Configuration for the application, will be mounted as a ConfigMap
+config:
+  cacheTtlSeconds: 300
+  allowedOrigin: "https://csecbridge.example.com"
+  postgres:
+    host: "postgres-service"
+    port: 5432
+    user: "csecbridge_user"
+    db: "csecbridge_db"
+    maxConn: 10
+    sslEnabled: false
+  redis:
+    host: "redis-service"
+    port: 6379
+    sslEnabled: false
+
+# Secret values. In production, these should be managed externally.
+secrets:
+  apiAuthToken: "super-secret-production-token-replace-me"
+  postgresPassword: "a-very-strong-and-random-password"
+  redisPassword: "another-strong-random-password"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: csecbridge.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minRe-plicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+networkPolicy:
+  enabled: true
+  ingressFromLabel: "app.kubernetes.io/name=ingress-nginx"

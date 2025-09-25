@@ -1,0 +1,5 @@
+# Base for platform configuration,
+resources:
+  - namespace.yaml
+  - deployment-role.yaml
+  - service-account.yaml

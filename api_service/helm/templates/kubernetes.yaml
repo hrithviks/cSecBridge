@@ -1,0 +1,169 @@
+# --- Secret ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "api-service.fullname" . }}-secret
+type: Opaque
+stringData:
+  API_AUTH_TOKEN: {{ .Values.secrets.apiAuthToken | quote }}
+  POSTGRES_PASSWORD: {{ .Values.secrets.postgresPassword | quote }}
+  REDIS_PASSWORD: {{ .Values.secrets.redisPassword | quote }}
+
+---
+# --- ConfigMap ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "api-service.fullname" . }}-config
+data:
+  CACHE_TTL_SECONDS: {{ .Values.config.cacheTtlSeconds | quote }}
+  ALLOWED_ORIGIN: {{ .Values.config.allowedOrigin | quote }}
+  POSTGRES_HOST: {{ .Values.config.postgres.host | quote }}
+  POSTGRES_PORT: {{ .Values.config.postgres.port | quote }}
+  POSTGRES_USER: {{ .Values.config.postgres.user | quote }}
+  POSTGRES_DB: {{ .Values.config.postgres.db | quote }}
+  POSTGRES_MAX_CONN: {{ .Values.config.postgres.maxConn | quote }}
+  POSTGRES_SSL_ENABLED: {{ .Values.config.postgres.sslEnabled | quote }}
+  REDIS_HOST: {{ .Values.config.redis.host | quote }}
+  REDIS_PORT: {{ .Values.config.redis.port | quote }}
+  REDIS_SSL_ENABLED: {{ .Values.config.redis.sslEnabled | quote }}
+
+---
+# --- Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "api-service.fullname" . }}-deployment
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "api-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "api-service.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8000
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        envFrom:
+        - configMapRef:
+            name: {{ include "api-service.fullname" . }}-config
+        - secretRef:
+            name: {{ include "api-service.fullname" . }}-secret
+
+---
+# --- Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "api-service.fullname" . }}-service
+spec:
+  selector:
+    {{- include "api-service.selectorLabels" . | nindent 4 }}
+  ports:
+  - protocol: TCP
+    port: {{ .Values.service.port }}
+    targetPort: 8000
+
+---
+{{- if .Values.networkPolicy.enabled }}
+# --- Network Policy ---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "api-service.fullname" . }}-policy
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "api-service.selectorLabels" . | nindent 6 }}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          {{- .Values.networkPolicy.ingressFromLabel | nindent 10 }}
+    ports:
+    - protocol: TCP
+      port: 8000
+{{- end }}
+
+---
+{{- if .Values.ingress.enabled }}
+# --- Ingress ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "api-service.fullname" . }}-ingress
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "api-service.fullname" $ }}-service
+                port:
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+
+---
+{{- if .Values.autoscaling.enabled }}
+# --- Horizontal Pod Autoscaler (HPA) ---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "api-service.fullname" . }}-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "api-service.fullname" . }}-deployment
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
