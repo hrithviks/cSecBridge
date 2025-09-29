@@ -8,13 +8,15 @@ rules:
   # Core Kubernetes resources permissions
   - apiGroups: ["", "apps", "networking.k8s.io"]
     resources:
-      - deployments
-      - services
-      - pods
-      - configmaps
-      - secrets
-      - ingresses
-      - networkpolicies
+      [
+        "deployments",
+        "services",
+        "pods",
+        "configmaps",
+        "secrets",
+        "ingresses",
+        "networkpolicies",
+      ]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Autoscaling resources
   - apiGroups: ["autoscaling"]
