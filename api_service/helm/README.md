@@ -2,11 +2,11 @@
 
 This Helm chart deploys the CSecBridge API Service, a Flask-based application, to a Kubernetes cluster.
 
-It is designed to be configurable for various environments and follows best practices for security and scalability, including support for health probes, resource management, and autoscaling.
+It is designed to be configurable for various environments and follows best practices for security and scalability, including support for health probes, resource management, autoscaling, and network policies.
 
 ## **Prerequisites**
 
-* Kubernetes cluster v1.21+  
+* Kubernetes cluster v1.21+ with a Network Policy provider (e.g., Calico, Cilium).  
 * Helm v3.2.0+  
 * A pre-existing namespace where the service will be deployed.  
 * Backend services (PostgreSQL, Redis) must be available and accessible from within the cluster.
@@ -16,11 +16,11 @@ It is designed to be configurable for various environments and follows best prac
 To install the chart with the release name api-release into the csecbridge-dev namespace:
 
 \# To install with default values (which creates secrets), run:  
-helm install api-release . \--namespace csecbridge-dev
+helm install api-release ./api\_service/helm \--namespace csecbridge-dev
 
 \# To override a value, for example to disable secret creation for a  
 \# CI/CD pipeline, you can use the \--set flag:  
-helm install api-release . \--namespace csecbridge-dev \--set secrets.create=false
+helm install api-release ./api\_service/helm \--namespace csecbridge-dev \--set secrets.create=false
 
 ## **Uninstalling the Chart**
 
@@ -85,3 +85,12 @@ The following table lists the configurable parameters of the API Service chart a
 | secrets.apiAuthToken | The static API token for authentication. | super-secret-test-token |
 | secrets.postgresPassword | The password for the PostgreSQL database. | a-very-strong-and-random-password |
 | secrets.redisPassword | The password for the Redis service. | another-strong-random-password |
+
+### **NetworkPolicy Settings**
+
+| Parameter | Description | Default |
+| :---- | :---- | :---- |
+| networkPolicy.enabled | If true, a NetworkPolicy resource will be created to firewall the pods. | true |
+| networkPolicy.egress.postgres.podSelector | The labels to select the PostgreSQL pods for allowed outbound traffic. | app.kubernetes.io/name: postgresql |
+| networkPolicy.egress.redis.podSelector | The labels to select the Redis pods for allowed outbound traffic. | app.kubernetes.io/name: redis |
+| networkPolicy.egress.dns.podSelector | The labels to select the Kubernetes DNS pods for allowed outbound traffic. | k8s-app: kube-dns |

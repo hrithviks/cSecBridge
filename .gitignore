@@ -1,7 +1,7 @@
 .DS_Store
 require.txt
 venv
-notes.md
+*notes.md
 design*
 test*
 Docker
