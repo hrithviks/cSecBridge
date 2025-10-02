@@ -1,0 +1,44 @@
+# .github/actions/create-kube-secrets/action.yaml
+# Creates Kubernetes secrets - API Token, PostgreSQL Password, and Redis Password, in a specified namespace.
+
+name: "Create Kubernetes Secrets"
+description: "Creates the api-token, postgres, and redis secrets in a specified namespace."
+
+# *** INPUTS ***
+# Defines the parameters this action accepts.
+inputs:
+  api_token:
+    description: "The API auth token."
+    required: true
+  db_password:
+    description: "The PostgreSQL database password."
+    required: true
+  redis_password:
+    description: "The Redis password."
+    required: true
+  namespace:
+    description: "The Kubernetes namespace to create the secrets in."
+    required: true
+
+# *** ACTION STEPS ***
+# Defines the steps the action will run.
+runs:
+  using: "composite"
+  steps:
+    - name: Create API Token, DB, and Redis Secrets
+      shell: bash
+      run: |
+        # Create API Token Secret
+        kubectl create secret generic api-service-secret \
+          --from-literal=API_AUTH_TOKEN="${{ inputs.api_token }}" \
+          --namespace=${{ inputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+        # Create PostgreSQL Secret
+        kubectl create secret generic postgres-secret \
+          --from-literal=password="${{ inputs.db_password }}" \
+          --namespace=${{ inputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+        # Create Redis Secret
+        kubectl create secret generic redis-secret \
+          --from-literal=password="${{ inputs.redis_password }}" \
+          --namespace=${{ inputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
