@@ -2,12 +2,18 @@
 # This file is structured to group values by the Kubernetes resource they
 # primarily configure.
 
+# *** SERVICE ACCOUNT ***
+serviceAccount:
+  # Service account will be created using CI-CD pipeline
+  name: "csecbridge-deployer"
+
 # *** DEPLOYMENTS ***
 # Values that configure the api-service Deployment resource.
 deployment:
   replicaCount: 1
   image:
-    repository: csecbridge-api-service
+    # If no values passed during the Helm installation, always use the latest image.
+    name: "csecbridge-api-service:latest"
     pullPolicy: IfNotPresent
     # The image tag. If not set, it defaults to the chart's appVersion.
     tag: ""
@@ -71,13 +77,22 @@ config:
 
 # *** SECRETS ***
 # Configuration for sensitive data.
+# NOTE: This is only a placeholder. Actual secrets will be created by the CI/CD pipeline.
 secrets:
-  # This is only a placeholder for documentational purpose.
-  # Secrets will be created via CI-CD pipeline, prior to installing helm
-  create: false
-  apiAuthToken: ""
-  postgresPassword: ""
-  redisPassword: ""
+  apiToken:
+    create: false
+    name: api-service-secret
+    value: "shhhh-api-secret"
+
+  postgres:
+    create: false
+    name: postgres-secret
+    value: "shhhh-postgres-password"
+
+  redis:
+    create: false
+    name: redis-secret
+    value: "shhhh-redis-password"
 
 # *** NETWORK POLICY ***
 # Configures the NetworkPolicy resource to firewall the application pods.

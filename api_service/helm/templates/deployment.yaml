@@ -14,9 +14,12 @@ spec:
       labels:
         {{- include "api-service.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.deployment.image.name }}"
           imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
           ports:
             - name: http
@@ -32,8 +35,25 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.deployment.resources | nindent 12 }}
+
+          # Map non-sensitive environment variables from configmap
           envFrom:
             - configMapRef:
                 name: {{ include "api-service.fullname" . }}-config
-            - secretRef:
-                name: {{ include "api-service.fullname" . }}-secret
+          # Map sensitive environment variables from secret
+          env:
+            - name: API_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.apiToken.name }}
+                  key: API_AUTH_TOKEN
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.postgres.name }}
+                  key: POSTGRES_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.redis.name }}
+                  key: REDIS_PASSWORD
