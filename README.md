@@ -1,4 +1,4 @@
-# **CSecBridge \- Hybrid Identity & Access Gateway**
+# **cSecBridge \- Hybrid Identity & Access Gateway**
 
 CSecBridge is a modern, cloud-native security solution designed to act as a hybrid gateway for managing Identity and Access Management (IAM). It provides a centralized bridge between traditional on-premise access management systems and various dynamic target platforms, from public clouds like AWS and Azure to enterprise solutions like HashiCorp Terraform Cloud.
 
