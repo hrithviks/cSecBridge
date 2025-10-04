@@ -1,7 +1,0 @@
-# Tempalate for application namespaces
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: csecbridge-placeholder
-  labels:
-    name: csecbridge-placeholder
