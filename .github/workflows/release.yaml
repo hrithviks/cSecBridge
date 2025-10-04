@@ -19,7 +19,7 @@ concurrency:
 on:
   push:
     branches:
-      - release*
+      - release**
 
 jobs:
   #############################
