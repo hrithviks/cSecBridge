@@ -1,0 +1,64 @@
+# Default values for the postgres-service Helm chart.
+# This file is structured to group values by the Kubernetes resource or
+# logical component they configure.
+
+# *** STATEFULSET ***
+# Values that configure the StatefulSet resource which manages the database pod.
+statefulset:
+  replicaCount: 1
+  image:
+    repository: "csecbridge-postgres-service"
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  # Resource requests and limits for the container.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1" # 1 vCPU
+      memory: 1Gi
+
+# *** SERVICE ***
+# Values for the ClusterIP Service that provides a stable internal endpoint.
+service:
+  type: ClusterIP
+  port: 5432
+
+# *** PERSISTENT VOLUME ***
+# Configures the PersistentVolumeClaim for durable data storage.
+persistence:
+  enabled: true
+  size: 10Gi
+  # The storage class to use. For now, we use the cluster default.
+  # storageClassName: ""
+
+# *** POSTGRES APP CONFIGURATION ***
+# These values are passed as environment variables to the PostgreSQL container
+# to configure the database instance itself.
+databaseConfig:
+  name: "csecbridge_db"
+  user: "csecbridge_admin"
+
+# *** SECRETS ***
+# Secret definition for illustration only; All secrets will be generated
+# by the pipeline.
+secret:
+  enabled: false
+  name: "postgres-secret"
+  key: "postgres-password"
+
+  # NOTE: This default value is for testing only.
+  value: "gibberish-ransfhqasfqw90rqn3r3q*3rqwfa1313"
+
+# *** NETWORK POLICY ***
+networkPolicy:
+  enabled: true
+  # Ingress rules define the inbound connections allowed TO the database.
+  ingress:
+    # This section defines the labels for the api-service pods that are
+    # allowed to connect. These labels must match the api-service's chart.
+    fromApiService:
+      podSelector:
+        app.kubernetes.io/name: api-service

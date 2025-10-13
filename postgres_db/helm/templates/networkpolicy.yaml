@@ -1,0 +1,31 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  # This policy applies to all pods created by our postgres-service StatefulSet.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  
+  policyTypes:
+  - Ingress
+
+  # --- Ingress Rules (Who can connect TO this database pod?) ---
+  ingress:
+  - from:
+    # This rule allows connections FROM pods that match these labels.
+    - podSelector:
+        matchLabels:
+          # The labels are taken from the values.yaml file.
+          {{- toYaml .Values.networkPolicy.ingress.fromApiService.podSelector | nindent 10 }}
+    ports:
+    # The connection is only allowed on the specified PostgreSQL port.
+    - protocol: TCP
+      port: {{ .Values.service.port }}
+{{- end -}}
