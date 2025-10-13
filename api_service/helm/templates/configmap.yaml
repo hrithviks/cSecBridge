@@ -1,3 +1,7 @@
+# ---------------------------------
+# ConfigMap Template for Helm Chart
+# ---------------------------------
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
