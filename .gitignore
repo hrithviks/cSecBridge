@@ -7,3 +7,5 @@ test*
 Docker
 issues.md
 app/__pycache__*
+testing/*
+doc*.md
