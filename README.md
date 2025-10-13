@@ -35,14 +35,15 @@ csecbridge/
 │   └── unit_test/
 ├── frontend\_service/
 ├── worker\_service\_aws/
-└── worker\_service\_azure/
+├── worker\_service\_azure/
 ├── postgres_db/
 │   ├── Dockerfile
 │   ├── init.sql
 │   ├── helm/
 │   └── unit_test/
 ├── cache/
-└── observability/
+├── observability/
+└── func_testing/
 ```
 
 ## **🚀 Getting Started**
