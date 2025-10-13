@@ -23,16 +23,24 @@ This is a monorepo containing the source code and configuration for all of CSecB
 ```
 csecbridge/
 ├── .github/
-│   └── workflows/ 
+│   └── workflows/
+├── platform-config/
+│   ├── base/
+│   └── overlays/
 ├── api\_service/
 │   ├── Dockerfile
 │   ├── helm/
-│   ├── platform-config/
-│   └── src/
+│   ├── source/
+│   ├── sql/
+│   └── unit_test/
 ├── frontend\_service/
 ├── worker\_service\_aws/
 └── worker\_service\_azure/
-├── database/
+├── postgres_db/
+│   ├── Dockerfile
+│   ├── init.sql
+│   ├── helm/
+│   └── unit_test/
 ├── cache/
 └── observability/
 ```
