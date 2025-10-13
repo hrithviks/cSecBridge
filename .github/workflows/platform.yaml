@@ -30,11 +30,12 @@ jobs:
   # JOB 1: APPLY DEV PLATFORM CONFIG #
   ####################################
   apply-dev-platform:
+    if: false # Temporarily disabled
     name: Apply Dev Platform Config
     runs-on: ubuntu-latest
 
     # This job only runs on a push to the 'dev' branch.
-    if: github.ref == 'refs/heads/dev'
+    # if: github.ref == 'refs/heads/dev'
 
     steps:
       - name: Checkout repository
@@ -55,11 +56,12 @@ jobs:
   # JOB 2: APPLY PROD PLATFORM CONFIG #
   #####################################
   apply-prod-platform:
+    if: false # Temporarily disabled
     name: Apply Prod Platform Config
     runs-on: ubuntu-latest
 
     # This job only runs on a push to the 'main' branch.
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
 
     environment:
       name: production-platform
