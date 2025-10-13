@@ -1,4 +1,10 @@
-# Statefulset template
+# --------------------------------------------
+# Statefulset Template for the Helm Chart
+#
+# - Creates the core POD for postgres service
+# - Attaches the persistent volume for db data
+# --------------------------------------------
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
