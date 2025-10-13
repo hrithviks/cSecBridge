@@ -32,13 +32,13 @@ The base/namespace.yaml file provides a template for creating an isolated logica
 
 The base/service-account.yaml file defines a non-human identity named csecbridge-deployer. This is the identity that automated processes, specifically the **CI/CD pipeline**, will use to authenticate with the Kubernetes cluster. Using a dedicated ServiceAccount is a critical security best practice that avoids the use of human user credentials in automation.
 
-### **3\. Role (deployment-manager-role)**
+### **3\. Role (csb-app-manager)**
 
 The base/deployment-role.yaml file defines a namespaced Role that contains all the permissions necessary to deploy, manage, and troubleshoot the application. This includes permissions to create Deployments, Services, Secrets, and view pod logs. By defining this in the base, we ensure that the set of permissions is consistent across all environments.
 
 ### **4\. RoleBinding**
 
-The RoleBinding is an environment-specific resource defined in the overlays. Its job is to grant the permissions from the deployment-manager-role to a specific subject within that environment's namespace.
+The RoleBinding is an environment-specific resource defined in the overlays. Its job is to grant the permissions from the csb-app-manager to a specific subject within that environment's namespace.
 
 * **In dev:** The role-binding.yaml grants the role to a human user group (e.g., csecbridge-developers), allowing developers to deploy manually.  
 * **In prod:** The role-binding.yaml grants the role to the csecbridge-deployer ServiceAccount, ensuring that only the automated CI/CD pipeline can perform deployments.

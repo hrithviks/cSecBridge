@@ -1,8 +1,10 @@
-# Deployment Manager Role for CI.CD pipeline
+# -------------------------------
+# Deployment Manager Role
+# -------------------------------
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: deployment-manager-role
+  name: csb-app-manager
   # The namespace will be set automatically by the Kustomize overlay.
 rules:
   # Core Kubernetes resources permissions
@@ -10,6 +12,8 @@ rules:
     resources:
       [
         "deployments",
+        "statefulsets",
+        "daemonsets",
         "services",
         "pods",
         "configmaps",
