@@ -1,4 +1,7 @@
-# This Kustomize overlay configures the 'prod' environment.
+# ---------------------------------------------------
+# Kustomize overlay configures the 'prod' environment
+# ---------------------------------------------------
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -8,7 +11,7 @@ resources:
   - role-binding.yaml
 
 # Set the namespace for all resources in this overlay.
-namespace: csecbridge-prod
+namespace: csb-prod
 
 # Apply patches to the base resources.
 patches:
@@ -18,7 +21,7 @@ patches:
     patch: |-
       - op: replace
         path: /metadata/name
-        value: csecbridge-prod
+        value: csb-prod
       - op: replace
         path: /metadata/labels/name
-        value: csecbridge-prod
+        value: csb-prod
