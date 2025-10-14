@@ -1,8 +1,8 @@
 # **CSecBridge API Service \- Platform Configuration**
 
-This section contains all the Kubernetes manifests required to set up and manage the platform environments (namespaces, RBAC, etc.) where the api-service application will be deployed.
+This section contains all the Kubernetes manifests required to set up and manage the platform environments (namespaces, RBAC, etc.) where the csecbridge application will be deployed.
 
-This configuration is managed using **Kustomize**, the native Kubernetes configuration management tool. This allows us to define a common base configuration and apply environment-specific overlays for dev and prod, following the DRY (Don't Repeat Yourself) principle.
+This configuration is managed using **Kustomize**, the native Kubernetes configuration management tool. This allows to define a common base configuration and apply environment-specific overlays for dev and prod.
 
 ## **Directory Structure**
 
