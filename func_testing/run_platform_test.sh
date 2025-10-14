@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -----------------------------------------------------------------------------
-# CSecBridge Platform Configuration Validation Script
+# CSecBridge Platform Configuration -  Validation Script
 #
 # This script automates the validation of the foundational Kubernetes platform
 # configuration for the 'dev' environment. It performs the following steps:
@@ -44,7 +44,7 @@ run_test() {
   shift
   local command_to_run="$@"
 
-  echo -n "${BOLD}${BLUE}[TEST] $test_name...${RESET}"
+  echo -n "${BOLD}${BLUE}[TEST] $test_name..."
   
   # Execute the command, redirecting output to /dev/null to keep the report clean
   if eval "$command_to_run" > /dev/null 2>&1; then
@@ -63,8 +63,8 @@ setup_environment() {
     log_info "${RED}Failed to apply platform configuration. Aborting.${RESET}"
     exit 1
   fi
-  # Wait a moment for resources to be created
-  sleep 2
+  # Induce a pause for resources to be fully created
+  sleep 5
   log_info "Kubernetes platform setup complete..."
 }
 
@@ -72,6 +72,7 @@ setup_environment() {
 run_validation_tests() {
   log_info "Running platform validation tests..."
   local all_tests_passed=true
+
   echo
 
   # TC-P01: `kubectl` Connectivity Verification
@@ -95,7 +96,7 @@ run_validation_tests() {
   fi
 
   # TC-P05: RBAC RoleBinding Validation
-  # For this test, we need the jq executable to parse the JSON output.
+  # This test, requires jq executable to parse the JSON output.
   local get_rb_json="kubectl get rolebinding ${RB_NAME} -n ${NAMESPACE} -o json"
   local check_binding_command="${get_rb_json} | jq -e '
     (.roleRef.name == \"${ROLE_NAME}\") and 
@@ -106,6 +107,7 @@ run_validation_tests() {
   fi
 
   echo
+
   if [ "$all_tests_passed" == true ]; then
     log_info "${GREEN}All platform validation tests passed!${RESET}"
   else
