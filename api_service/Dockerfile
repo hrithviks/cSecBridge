@@ -20,7 +20,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Create user to run the application
-RUN groupadd -r csecbridge && useradd --no-log-init -r -g csecbridge csecbridge
+RUN groupadd -r csbuser && useradd --no-log-init -r -g csbuser csbuser
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -36,10 +36,10 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.t
 COPY source/. .
 
 # Change the ownership of the application directory to the non-root user
-RUN chown -R csecbridge:csecbridge /usr/src/app
+RUN chown -R csbuser:csbuser /usr/src/app
 
 # Switch to the non-root user
-USER csecbridge
+USER csbuser
 
 # Expose the port 8000 for the application
 EXPOSE 8000
