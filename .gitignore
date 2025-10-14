@@ -9,4 +9,3 @@ issues.md
 app/__pycache__*
 testing/*
 doc*.md
-cases.md
