@@ -1,4 +1,7 @@
-# This Kustomize overlay configures the 'dev' environment.
+# --------------------------------------------------
+# Kustomize overlay configures the 'dev' environment
+# --------------------------------------------------
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -8,17 +11,17 @@ resources:
   - role-binding.yaml
 
 # Set the namespace for all resources in this overlay.
-namespace: csecbridge-dev
+namespace: csb-dev
 
 # Apply patches to the base resources.
 patches:
   - target:
       kind: Namespace
-      name: csecbridge-placeholder
+      name: csb-placeholder
     patch: |-
       - op: replace
         path: /metadata/name
-        value: csecbridge-dev
+        value: csb-dev
       - op: replace
         path: /metadata/labels/name
-        value: csecbridge-dev
+        value: csb-dev
