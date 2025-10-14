@@ -2,14 +2,15 @@
 # .github/workflows/api-service.yaml                                           #
 #                                                                              #
 # This workflow defines the CI/CD pipeline for the CSecBridge API Service.     #
-# It automates linting, building, and deploying to dev and prod environments.  #
+# It automates linting, building, and deploying to dev/test environment.       #
+#                                                                              #
+# Note: Production deployment will be handled by a separate release pipeline.  #
 # ##############################################################################
 
 name: Deployment Workflow for CSecBridge API Service
 
 # Workflow Concurrency Control
 # Scoped to the specific branch (ref). Ensures a single active workflow per branch.
-# For PROD, workflow will be queued. For DEV, workflow will be replaced.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_name != 'main' }}
