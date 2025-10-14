@@ -1,7 +1,10 @@
-# Tempalate for application namespaces
+# --------------------------------
+# Namespace template for Kustomize
+# --------------------------------
+
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: csecbridge-placeholder
+  name: csb-placeholder
   labels:
-    name: csecbridge-placeholder
+    name: csb-placeholder

@@ -1,4 +1,7 @@
-# Base for platform configuration,
+# --------------------------------
+# Resources in scope for Kustomize
+# --------------------------------
+
 resources:
   - namespace.yaml
   - deployment-role.yaml
