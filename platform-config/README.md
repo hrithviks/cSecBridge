@@ -21,10 +21,10 @@ platform-config/
     │   └── role-binding.yaml  \# Binds the role to a developer group  
     ├── qa/  
     │   ├── kustomization.yaml \# Defines the 'qa' environment  
-    │   └── role-binding.yaml  \# Binds the role to the CI/CD ServiceAccount
+    │   └── role-binding.yaml  \# Binds the role to the test ServiceAccount
     ├── prod/  
-    │   ├── kustomization.yaml \# Defines the 'dev' environment  
-    │   └── role-binding.yaml  \# Binds the role to a developer group  
+    │   ├── kustomization.yaml \# Defines the 'prod' environment  
+    │   └── role-binding.yaml  \# Binds the role to a CI.CD group  
 ```
 
 ## **Core Components**
@@ -57,6 +57,12 @@ This platform configuration should be applied **before** the application's Helm 
 This single command uses Kustomize (-k) to build and apply the complete configuration for the development environment.
 
 kubectl apply \-k platform-config/overlays/dev
+
+### **To Deploy the qa Environment**
+
+This single command uses Kustomize (-k) to build and apply the complete configuration for the testing environment.
+
+kubectl apply \-k platform-config/overlays/qa
 
 ### **To Deploy the prod Environment**
 
