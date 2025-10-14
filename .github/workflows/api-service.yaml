@@ -97,7 +97,7 @@ jobs:
           api_token: ${{ secrets.DEV_API_TOKEN }}
           db_password: ${{ secrets.DEV_DB_PASSWORD }}
           redis_password: ${{ secrets.DEV_REDIS_PASSWORD }}
-          namespace: csecbridge-prod
+          namespace: csecbridge-dev
 
       - name: Deploy to Dev with Helm
         uses: ./.github/actions/helm-deploy
