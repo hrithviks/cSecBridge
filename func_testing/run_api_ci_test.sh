@@ -94,12 +94,24 @@ setup_environment() {
   fi
 
   # Environment variables for helm section
-  # Postgres
-  if [ -z "${CSB_API_AUTH_TOKEN}" ] || [ -z "${CSB_DB_PSWD}" ] || [ -z "${CSB_REDIS_PSWD}" ]; then
-    log_info "${RED}Environment vars missing for the kubernetes secrets section...${RESET}"
+  if ([ -z "${CSB_POSTGRES_HOST}" ] # Postgres Connection
+      || [ -z "${CSB_POSTGRES_PORT}" ] 
+      || [ -z "${CSB_POSTGRES_USER}" ] 
+      || [ -z "${CSB_POSTGRES_MAX_CONN}" ] 
+      || [ -z "${CSB_POSTGRES_DB}" ]); then 
+    log_info "${RED}Environment vars missing for the postgres connection...${RESET}"
     exit 1
   fi
 
+  if [ -z "${CSB_REDIS_HOST}" ] || [ -z "${CSB_REDIS_PORT}" ] ; then # Redis Connection
+    log_info "${RED}Environment vars missing for the redis connection...${RESET}"
+    exit 1
+  fi
+
+  if [ -z "${CSB_ALLOWED_ORIGIN}"]; then # API service configuration
+    log_info "${RED}Environment vars missing for the API service configuration...${RESET}"
+    exit 1
+  fi
 
   # Platform configuration
   log_info "Verifying test platform..."
