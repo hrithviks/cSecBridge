@@ -15,7 +15,7 @@
 #   5. Generates a report in the console.
 #   6. Tears down all test-specific resources created by the script.
 #
-# Usage: ./run-ci-tests.sh
+# Usage: ./run_api_ci_test.sh
 # -----------------------------------------------------------------------------
 
 # Global configuration
