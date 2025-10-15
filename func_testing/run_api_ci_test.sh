@@ -33,6 +33,7 @@ RESET=$(tput sgr0)
 K_NAMESPACE="csb-qa"
 K_SA_NAME="csb-app-sa"
 K_ROLE_NAME="csb-app-deployer-role"
+
 API_SERVICE_PATH="../api_service"
 HELM_CHART_PATH="${API_SERVICE_PATH}/helm"
 RELEASE_NAME="ci-qa-api"
@@ -78,6 +79,27 @@ run_test() {
 
 # Environment setup function
 setup_environment() {
+
+  log_info "Verifying test environment configuration data..."
+  # Environment variable for build section
+  if [ -z "${GITHUB_USER}" ] || [ -z "${GITHUB_TOKEN}" ]; then
+    log_info "${RED}Environment vars missing for the containerization section...${RESET}"
+    exit 1
+  fi
+
+  # Environment variables for kubernetes secrets
+  if [ -z "${CSB_API_AUTH_TOKEN}" ] || [ -z "${CSB_DB_PSWD}" ] || [ -z "${CSB_REDIS_PSWD}" ]; then
+    log_info "${RED}Environment vars missing for the kubernetes secrets section...${RESET}"
+    exit 1
+  fi
+
+  # Environment variables for helm section
+  # Postgres
+  if [ -z "${CSB_API_AUTH_TOKEN}" ] || [ -z "${CSB_DB_PSWD}" ] || [ -z "${CSB_REDIS_PSWD}" ]; then
+    log_info "${RED}Environment vars missing for the kubernetes secrets section...${RESET}"
+    exit 1
+  fi
+
 
   # Platform configuration
   log_info "Verifying test platform..."
@@ -146,19 +168,11 @@ run_ci_tests() {
   fi
   git restore "${API_SERVICE_PATH}/source/app/routes.py" # Clean up
 
-  ##########################################
-  # Section 2: Containerization            #
-  #                                        #
-  # Required Environment Variables/Secrets #
-  # 1. GITHUB_USER                         #
-  # 2. GITHUB_TOKEN                        #  
-  ##########################################
+  ###############################
+  # Section 2: Containerization #
+  ###############################
   echo
   log_info "Section 2: Containerization Tests..."
-  if [ -z "${GITHUB_USER}" ] || [ -z "${GITHUB_TOKEN}" ]; then
-    log_info "Environment vars missing for the containerization section..."
-    return 2
-  fi
 
   # Local Env Vars for Testing
   local DOCKERFILE_PATH=${API_SERVICE_PATH}
@@ -200,8 +214,6 @@ run_ci_tests() {
   echo
   log_info "Section 3: Kubernetes Pre-Deployment Tests"
   return 2
-
-  # CI-07: Check if the kubernetes service account is defined in the cluster
 
   # CI-08: Check if all environment variables (including secrets are defined)
 
