@@ -63,6 +63,7 @@ _REDIS_CACHE_TTL = 300
 # Initial status for all new requests.
 _INIT_STATUS = 'PENDING'
 
+
 def _set_cache(redis_conn, correlation_id, status):
     """Internal function to update the redis cache."""
 
@@ -76,6 +77,7 @@ def _set_cache(redis_conn, correlation_id, status):
         json.dumps(cache_data),
         ex=_REDIS_CACHE_TTL
     )
+
 
 def create_new_request(db_conn, redis_conn, backend_data):
     """
@@ -103,47 +105,57 @@ def create_new_request(db_conn, redis_conn, backend_data):
     with db_conn.cursor() as cur:
         try:
             # Insert into the requests table
-            cur.execute(_INSERT_TO_REQUESTS, (
-                        backend_data['client_request_id'],
-                        backend_data['correlation_id'],
-                        backend_data['account_id'],
-                        backend_data['principal'],
-                        backend_data['role'],
-                        backend_data['action'],
-                        _INIT_STATUS,
-                        backend_data['target_cloud'],
-                        backend_data['received_at'],
-                        backend_data['received_at']
-                    )
+            cur.execute(
+                _INSERT_TO_REQUESTS,
+                (
+                    backend_data['client_request_id'],
+                    backend_data['correlation_id'],
+                    backend_data['account_id'],
+                    backend_data['principal'],
+                    backend_data['role'],
+                    backend_data['action'],
+                    _INIT_STATUS,
+                    backend_data['target_cloud'],
+                    backend_data['received_at'],
+                    backend_data['received_at']
                 )
-        
+            )
+
             # Insert into the audit table
-            cur.execute(_INSERT_TO_REQUESTS_AUDIT, (
-                        backend_data['correlation_id'],
-                        backend_data['action'],
-                        _INIT_STATUS,
-                        None,
-                        backend_data['received_at']
+            cur.execute(
+                _INSERT_TO_REQUESTS_AUDIT,
+                (
+                    backend_data['correlation_id'],
+                    backend_data['action'],
+                    _INIT_STATUS,
+                    None,
+                    backend_data['received_at']
                 )
             )
         except psycopg2.Error as e:
-            error_message = f'DB insert failed for {backend_data["correlation_id"]}'
+            error_message = f'DB insert failed for \
+                {backend_data["correlation_id"]}'
             raise DBError(f'{error_message}') from e
-        
+
         # Push the data to redis queue
         try:
             queue_name = f'queue:{backend_data["target_cloud"]}'
             redis_conn.lpush(queue_name, json.dumps(backend_data))
         except redis.exceptions.RedisError as e:
-            error_message = f'Redis LPUSH failed for {backend_data["correlation_id"]}'
+            error_message = f'Redis LPUSH failed for \
+                {backend_data["correlation_id"]}'
             raise RedisError(f'{error_message}') from e
 
         # Populate the redis cache with the initial status
         try:
-            _set_cache(redis_conn, backend_data['correlation_id'], _INIT_STATUS)
+            _set_cache(redis_conn,
+                       backend_data['correlation_id'],
+                       _INIT_STATUS)
         except redis.exceptions.RedisError as e:
-            current_app.logger.warning(f'Redis set cache failed for {backend_data["correlation_id"]}: {e}',
+            current_app.logger.warning(f'Redis set cache failed for \
+                                       {backend_data["correlation_id"]}: {e}',
                                        extra=log_context)
+
 
 def get_request_by_id(db_conn, redis_conn, correlation_id):
     """
@@ -172,7 +184,8 @@ def get_request_by_id(db_conn, redis_conn, correlation_id):
     try:
         cached_status = redis_conn.get(cache_key)
         if cached_status:
-            current_app.logger.debug('Redis GET successful.', extra=log_context)
+            current_app.logger.debug('Redis GET successful.',
+                                     extra=log_context)
             return json.loads(cached_status)
     except redis.exceptions.RedisError as e:
         current_app.logger.warning(f'Redis GET failed for {cache_key}: {e}',
@@ -201,8 +214,9 @@ def get_request_by_id(db_conn, redis_conn, correlation_id):
         status = request_status['STATUS']
         _set_cache(redis_conn, correlation_id, status)
     except redis.exceptions.RedisError as e:
-        current_app.logger.warning(f'Redis set cache failed for {correlation_id}: {e}',
+        current_app.logger.warning(f'Redis set cache failed for \
+                                   {correlation_id}: {e}',
                                    extra=log_context)
-        
+
     current_app.logger.debug('Status cached to redis.', extra=log_context)
     return {key: request_status[key] for key in _RESPONSE_KEYS}

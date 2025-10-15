@@ -9,30 +9,34 @@ from flask import jsonify, current_app, request
 from werkzeug.exceptions import HTTPException
 from jsonschema import ValidationError
 
-# Custom exception classes for the package
 
 # Custom exception class for the extention
 class ExtentionError(Exception):
     """Custom error class for extensions."""
     pass
 
+
 # Custom error classes for backend
 class BackendServerError(Exception):
     """Custom error class for backend errors."""
     pass
 
+
 class DBError(BackendServerError):
     """Custom error class for database operations."""
     pass
+
 
 class RedisError(BackendServerError):
     """Custom error class for Redis operations."""
     pass
 
+
 # Internal system error class for the routes module
 class APIServerError(Exception):
     """Custom error class for API server."""
     pass
+
 
 # HTTP error handler for Flask App
 def _handle_http_exception(e):
@@ -42,8 +46,10 @@ def _handle_http_exception(e):
         "error": e.name,
         "details": e.description,
     }
-    current_app.logger.info(f"HTTP Exception caught: {e.code} {e.name} - {request.path}")
+    current_app.logger.info(f"HTTP Exception caught: \
+                            {e.code} {e.name} - {request.path}")
     return jsonify(response), e.code
+
 
 # API server error handler for Flask App
 def _handle_api_server_exception(e):
@@ -53,8 +59,9 @@ def _handle_api_server_exception(e):
     response = {
         "error": "Internal Server Error. Please try again."
     }
-    current_app.logger.error(f"APIServer Exception caught.")
+    current_app.logger.error(f"APIServer Exception caught - {str(e)}")
     return jsonify(response), 503
+
 
 # JSON Schema validation error handler
 def _handle_json_schema_error(e):
@@ -64,8 +71,10 @@ def _handle_json_schema_error(e):
         "error": "JSON Data Error",
         "details": str(e),
     }
-    current_app.logger.error(f"JSON Schema Validation Exception caught.")
+    current_app.logger.error(f"JSON Schema Validation Exception caught. \
+                             {str(e)}")
     return jsonify(response), 400
+
 
 # All unhandled exceptions within the app
 def _handle_all_exceptions(e):
@@ -78,6 +87,7 @@ def _handle_all_exceptions(e):
     current_app.logger.error(f"Unhandled Exception caught: {e}", exc_info=True)
     return jsonify(response), 500
 
+
 # Register all error handlers
 def register_error_handlers(app):
     """Registers all necessary error handlers for the Flask app instance."""
@@ -86,4 +96,3 @@ def register_error_handlers(app):
     app.register_error_handler(HTTPException, _handle_http_exception)
     app.register_error_handler(APIServerError, _handle_api_server_exception)
     app.register_error_handler(Exception, _handle_all_exceptions)
-

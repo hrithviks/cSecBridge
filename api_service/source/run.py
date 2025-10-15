@@ -23,7 +23,8 @@ try:
 except ImportError as e:
     # Fallback to plain text if logging config fails.
     logging.basicConfig(level=logging.DEBUG)
-    logging.warning(f"Could not import logging_config. Falling back to basic logging. {str(e)}")
+    logging.warning(f"Could not import logging_config. \
+                    Falling back to basic logging. {str(e)}")
 
 # Main application process starts here
 try:
@@ -36,7 +37,7 @@ try:
     # Initialize config to load and validate environment variables
     log.debug("Initializing configuration.", extra=_STARTUP_CONTEXT)
     initialize_config()
-    
+
     # Import and call the application factory
     from app import create_app
     from app.errors import ExtentionError, BackendServerError, APIServerError
@@ -46,37 +47,51 @@ try:
     log.debug("Application factory created.", extra=_STARTUP_CONTEXT)
 
 # Exceptions from config module
-except ConfigLoadError as e:
-    log.critical("Environment configuration validation failed.", exc_info=True, extra=_STARTUP_CONTEXT)
+except ConfigLoadError:
+    log.critical("Environment configuration validation failed.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 # Exceptions from extensions module
-except ExtentionError as e:
-    log.critical("Extension initialization failed.", exc_info=True, extra=_STARTUP_CONTEXT)
+except ExtentionError:
+    log.critical("Extension initialization failed.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 # Runtime errors during initialization
-except RuntimeError as e:
-    log.critical("Runtime error during application initialization.", exc_info=True, extra=_STARTUP_CONTEXT)
+except RuntimeError:
+    log.critical("Runtime error during application initialization.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 # Exceptions from backend module
-except BackendServerError as e:
-    log.critical("Backend service communication failed.", exc_info=True, extra=_STARTUP_CONTEXT)
+except BackendServerError:
+    log.critical("Backend service communication failed.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 # System errors from routes module
-except APIServerError as e:
-    log.critical("Unrecoverable system error in application routing.", exc_info=True, extra=_STARTUP_CONTEXT)
+except APIServerError:
+    log.critical("Unrecoverable system error in application routing.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 # Handle library import errors
-except ImportError as e:
-    log.critical("Application library import failed.", exc_info=True, extra=_STARTUP_CONTEXT)
+except ImportError:
+    log.critical("Application library import failed.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 # All unhandled exceptions
-except Exception as e:
-    log.critical("Unhandled exception during application startup.", exc_info=True, extra=_STARTUP_CONTEXT)
+except Exception:
+    log.critical("Unhandled exception during application startup.",
+                 exc_info=True,
+                 extra=_STARTUP_CONTEXT)
     sys.exit(1)
 
 if __name__ == '__main__':

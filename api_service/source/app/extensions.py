@@ -27,7 +27,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_cors import CORS
-from psycopg2 import pool, OperationalError
+from psycopg2 import pool
 from config import config
 from app.errors import ExtentionError
 
@@ -38,11 +38,11 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 # Define the public APIs of this module
-__all__ = ['limiter', 
-           'talisman', 
-           'cors', 
-           'db_pool', 
-           'redis_client', 
+__all__ = ['limiter',
+           'talisman',
+           'cors',
+           'db_pool',
+           'redis_client',
            'ExtentionError']
 
 #######################################
@@ -63,10 +63,11 @@ try:
         strategy="fixed-window",
     )
 except redis.exceptions.ConnectionError as e:
-    log.error(f"Redis connection error for Flask Limiter: {str(e)}", 
-              exc_info=True, 
+    log.error(f"Redis connection error for Flask Limiter: {str(e)}",
+              exc_info=True,
               extra=_MODULE_LOG_CONTEXT)
-    raise ExtentionError(f"Redis connection error for Flask Limiter: {str(e)}") from e
+    raise ExtentionError(f"Redis connection error for Flask Limiter: \
+                         {str(e)}") from e
 
 ######################################
 # Security extenstions for Flask app #
@@ -89,18 +90,20 @@ if config.POSTGRES_SSL_ENABLED:
     _db_conn_params['sslrootcert'] = config.POSTGRES_SSL_CA_CERT
 
 try:
-    db_pool = pool.ThreadedConnectionPool(1, 
-                                        config.POSTGRES_MAX_CONN,
-                                        **_db_conn_params)
+    db_pool = pool.ThreadedConnectionPool(
+                1,
+                config.POSTGRES_MAX_CONN,
+                **_db_conn_params
+            )
 except ConnectionError as e:
-    log.error(f"Database connection error: {str(e)}", 
-              exc_info=True, 
+    log.error(f"Database connection error: {str(e)}",
+              exc_info=True,
               extra=_MODULE_LOG_CONTEXT)
     raise ExtentionError(f"Database connection error: {str(e)}") from e
 
 ##############################
 # Redis client for Flask app #
-##############################  
+##############################
 _redis_conn_params = {
     "host": config.REDIS_HOST,
     "port": config.REDIS_PORT,
@@ -117,7 +120,7 @@ try:
     # Issue ping on the redis client for fail-fast approach
     redis_client.ping()
 except redis.exceptions.ConnectionError as e:
-    log.error(f"Redis connection error: {str(e)}", 
-              exc_info=True, 
+    log.error(f"Redis connection error: {str(e)}",
+              exc_info=True,
               extra=_MODULE_LOG_CONTEXT)
     raise ExtentionError(f"Redis client connection error: {str(e)}") from e

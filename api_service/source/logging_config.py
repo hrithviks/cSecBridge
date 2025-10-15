@@ -17,6 +17,7 @@ import logging
 import sys
 from pythonjsonlogger import jsonlogger
 
+
 def setup_logging():
     """
     Configures the root logger to output structured JSON logs to stderr.
