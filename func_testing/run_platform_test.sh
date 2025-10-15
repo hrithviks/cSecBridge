@@ -10,7 +10,7 @@
 #   3. Generates a report in the console with the status of each test case.
 #   4. Tears down all created resources to clean up the environment.
 #
-# Usage: ./run-platform-tests.sh
+# Usage: ./run_platform_tests.sh
 # -----------------------------------------------------------------------------
 
 # Global configuration
