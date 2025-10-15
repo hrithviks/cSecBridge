@@ -4,7 +4,7 @@
 # CSecBridge Platform Configuration -  Validation Script
 #
 # This script automates the validation of the foundational Kubernetes platform
-# configuration for the 'dev' environment. It performs the following steps:
+# configuration for the 'qa' environment. It performs the following steps:
 #   1. Sets up the required resources (Namespace, RBAC) using Kustomize.
 #   2. Runs a series of tests to verify each resource was created correctly.
 #   3. Generates a report in the console with the status of each test case.
@@ -23,12 +23,12 @@ GREEN=$(tput setaf 2)
 RED=$(tput setaf 1)
 RESET=$(tput sgr0)
 
-# Test configuration for DEV environment
+# Test configuration for QA environment
 PLATFORM_OVERLAY_PATH="../platform-config/overlays/dev"
-NAMESPACE="csecbridge-dev"
-ROLE_NAME="csb-app-manager"
-SA_NAME="csecbridge-deployer"
-RB_NAME="dev-deployment-manager-binding"
+NAMESPACE="csb-qa"
+ROLE_NAME="csb-app-deployer-role"
+SA_NAME="csb-app-sa"
+RB_NAME="qa-deployer-role-binding"
 
 # Logger function
 log_info() {
