@@ -31,16 +31,18 @@ import os
 
 __all__ = ['ConfigLoadError', 'initialize_config']
 
+
 class ConfigLoadError(Exception):
-        """Custom exception for all fatal errors during configuration load."""
-        pass
+    """Custom exception for all fatal errors during configuration load."""
+    pass
+
 
 class _Config:
     """
     Loads, validates, and provides read-only access to app configuration.
     The loading and validation logic is encapsulated within this class.
     """
-    
+
     def __init__(self):
         pass
 
@@ -54,7 +56,7 @@ class _Config:
     @property
     def CACHE_TTL_SECONDS(self):
         return self._CACHE_TTL_SECONDS
-        
+
     @property
     def POSTGRES_HOST(self):
         return self._POSTGRES_HOST
@@ -82,7 +84,7 @@ class _Config:
     @property
     def POSTGRES_SSL_ENABLED(self):
         return self._POSTGRES_SSL_ENABLED
-        
+
     @property
     def POSTGRES_SSL_CA_CERT(self):
         return self._POSTGRES_SSL_CA_CERT
@@ -106,7 +108,7 @@ class _Config:
     @property
     def REDIS_SSL_CA_CERT(self):
         return self._REDIS_SSL_CA_CERT
-    
+
     @property
     def ALLOWED_ORIGIN(self):
         return self._ALLOWED_ORIGIN
@@ -122,19 +124,29 @@ class _Config:
 
         # Define a set of required base variables
         required_env_vars = [
-            "API_AUTH_TOKEN", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_USER",
-            "POSTGRES_PASSWORD", "POSTGRES_DB", "REDIS_HOST", "REDIS_PORT",
-            "POSTGRES_MAX_CONN", "ALLOWED_ORIGIN"
+            "API_AUTH_TOKEN",
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_DB",
+            "REDIS_HOST",
+            "REDIS_PORT",
+            "POSTGRES_MAX_CONN",
+            "ALLOWED_ORIGIN"
         ]
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
 
         # Check if SSL option is enabled for postgres
-        self._POSTGRES_SSL_ENABLED = os.getenv('POSTGRES_SSL_ENABLED', 'false').lower() == 'true'
-        if self._POSTGRES_SSL_ENABLED and not os.getenv('POSTGRES_SSL_CA_CERT'):
+        self._POSTGRES_SSL_ENABLED = os.getenv('POSTGRES_SSL_ENABLED',
+                                               'false').lower() == 'true'
+        if (self._POSTGRES_SSL_ENABLED
+                and not os.getenv('POSTGRES_SSL_CA_CERT')):
             missing_vars.append('POSTGRES_SSL_CA_CERT')
 
         # Check if SSL option is enabled for redis
-        self._REDIS_SSL_ENABLED = os.getenv('REDIS_SSL_ENABLED', 'false').lower() == 'true'
+        self._REDIS_SSL_ENABLED = os.getenv('REDIS_SSL_ENABLED',
+                                            'false').lower() == 'true'
         if self._REDIS_SSL_ENABLED and not os.getenv('REDIS_SSL_CA_CERT'):
             missing_vars.append('REDIS_SSL_CA_CERT')
 
@@ -155,7 +167,6 @@ class _Config:
             self._POSTGRES_DB = os.getenv('POSTGRES_DB')
             self._POSTGRES_MAX_CONN = int(os.getenv('POSTGRES_MAX_CONN'))
             self._POSTGRES_SSL_CA_CERT = os.getenv('POSTGRES_SSL_CA_CERT')
-            
             self._REDIS_HOST = os.getenv('REDIS_HOST')
             self._REDIS_PORT = int(os.getenv('REDIS_PORT'))
             self._REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
@@ -167,8 +178,10 @@ class _Config:
                   Ensure ports and max connections are integers. Details: {e}'
             raise ConfigLoadError(error_message) from e
 
+
 # The global config object starts as None.
 config = None
+
 
 def initialize_config():
     """
