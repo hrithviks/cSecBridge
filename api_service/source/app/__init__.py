@@ -13,7 +13,7 @@ The `create_app` function is responsible for:
 4.  Registering all API route blueprints to make the endpoints available.
 5.  Setting up a global error handler to catch any unhandled exceptions during
     request processing, ensuring the service remains stable.
-6.  Registering a teardown function to safely return database connections to 
+6.  Registering a teardown function to safely return database connections to
     the pool after each request, preventing connection leaks.
 
 Functions:
@@ -26,6 +26,7 @@ from .extensions import limiter, db_pool, talisman, cors
 from .backend import BackendServerError
 from .routes import APIServerError
 
+
 def create_app():
     """Create and configure instance of the Flask application."""
 
@@ -34,10 +35,11 @@ def create_app():
 
     # Initialize extensions with the app instance
     limiter.init_app(app)
-    
+
     # Initialize security extensions
-    talisman.init_app(app, force_https=False) 
-    cors.init_app(app, resources={r'/api/*': {"origins": config.ALLOWED_ORIGIN}})
+    talisman.init_app(app, force_https=False)
+    cors.init_app(app,
+                  resources={r'/api/*': {"origins": config.ALLOWED_ORIGIN}})
 
     # Register blueprints
     from . import routes
@@ -56,7 +58,7 @@ def create_app():
 
         # Log the exception to stderr
         app.logger.error(f"Internal Exception: {e}", exc_info=True)
-        
+
         # Return a generic, safe error response to the client
         return jsonify({
             "error": "Internal Server Error",
@@ -70,7 +72,7 @@ def create_app():
         Returns the database connection to the pool after each request.
         This is a teardown function that Flask calls automatically.
         '''
-        
+
         db = g.pop('db', None)
         if db is not None:
             db_pool.putconn(db)
