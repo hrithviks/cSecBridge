@@ -30,9 +30,9 @@ RED=$(tput setaf 1)
 RESET=$(tput sgr0)
 
 # Test configuration for QA environment
-K_NAMESPACE="csb-qa"
-K_SA_NAME="csb-app-sa"
-K_ROLE_NAME="csb-app-deployer-role"
+CSB_NAMESPACE="csb-qa"
+CSB_SA_NAME="csb-app-sa"
+CSB_ROLE_NAME="csb-app-deployer-role"
 
 API_SERVICE_PATH="../api_service"
 HELM_CHART_PATH="${API_SERVICE_PATH}/helm"
@@ -78,7 +78,7 @@ run_test() {
 }
 
 # Environment setup function
-setup_environment() {
+validate_environment() {
 
   log_info "Verifying test environment configuration data..."
   # Environment variable for build section
@@ -88,17 +88,17 @@ setup_environment() {
   fi
 
   # Environment variables for kubernetes secrets
-  if [ -z "${CSB_API_AUTH_TOKEN}" ] || [ -z "${CSB_DB_PSWD}" ] || [ -z "${CSB_REDIS_PSWD}" ]; then
+  if [ -z "${CSB_API_AUTH_TOKEN}" ] || [ -z "${CSB_POSTGRES_PSWD}" ] || [ -z "${CSB_REDIS_PSWD}" ]; then
     log_info "${RED}Environment vars missing for the kubernetes secrets section...${RESET}"
     exit 1
   fi
 
   # Environment variables for helm section
-  if ([ -z "${CSB_POSTGRES_HOST}" ] # Postgres Connection
-      || [ -z "${CSB_POSTGRES_PORT}" ] 
-      || [ -z "${CSB_POSTGRES_USER}" ] 
-      || [ -z "${CSB_POSTGRES_MAX_CONN}" ] 
-      || [ -z "${CSB_POSTGRES_DB}" ]); then 
+  if [ -z "${CSB_POSTGRES_HOST}" ] \
+      || [ -z "${CSB_POSTGRES_PORT}" ] \
+      || [ -z "${CSB_POSTGRES_USER}" ] \
+      || [ -z "${CSB_POSTGRES_MAX_CONN}" ] \ 
+      || [ -z "${CSB_POSTGRES_DB}" ]; then  # Postgres Connection
     log_info "${RED}Environment vars missing for the postgres connection...${RESET}"
     exit 1
   fi
@@ -108,27 +108,27 @@ setup_environment() {
     exit 1
   fi
 
-  if [ -z "${CSB_ALLOWED_ORIGIN}"]; then # API service configuration
+  if [ -z "${CSB_ALLOWED_ORIGIN}"]; then # API Service Configuration
     log_info "${RED}Environment vars missing for the API service configuration...${RESET}"
     exit 1
   fi
 
   # Platform configuration
   log_info "Verifying test platform..."
-  if ! kubectl get namespace "$K_NAMESPACE" > /dev/null 2>&1; then
-    log_info "${RED}Prerequisites missing: Namespace '${K_NAMESPACE}' does not exist...${RESET}"
+  if ! kubectl get namespace "$CSB_NAMESPACE" > /dev/null 2>&1; then
+    log_info "${RED}Prerequisites missing: Namespace '${CSB_NAMESPACE}' does not exist...${RESET}"
     log_info "${RED}Please apply platform config before running tests...${RESET}"
     exit 1
   fi
 
-  if ! kubectl get serviceaccount "$K_SA_NAME" -n "$K_NAMESPACE" > /dev/null 2>&1; then
-    log_info "${RED}Prerequisites missing: ServiceAccount '${K_SA_NAME}' does not exist...${RESET}"
+  if ! kubectl get serviceaccount "$CSB_SA_NAME" -n "$CSB_NAMESPACE" > /dev/null 2>&1; then
+    log_info "${RED}Prerequisites missing: ServiceAccount '${CSB_SA_NAME}' does not exist...${RESET}"
     log_info "${RED}Please apply platform config before running tests...${RESET}"
     exit 1
   fi
 
-  if ! kubectl get role "$K_ROLE_NAME" -n "$K_NAMESPACE" > /dev/null 2>&1; then
-    log_info "${RED}Prerequisites missing: Role '${K_ROLE_NAME}' does not exist...${RESET}"
+  if ! kubectl get role "$CSB_ROLE_NAME" -n "$CSB_NAMESPACE" > /dev/null 2>&1; then
+    log_info "${RED}Prerequisites missing: Role '${CSB_ROLE_NAME}' does not exist...${RESET}"
     log_info "${RED}Please apply platform config before running tests...${RESET}"
     exit 1
   fi
@@ -275,7 +275,7 @@ run_ci_tests() {
 # Ensures teardown runs even if the script is interrupted (e.g., with Ctrl+C)
 trap teardown_environment EXIT
 
-setup_environment
+validate_environment
 run_ci_tests
 final_status=$?
 

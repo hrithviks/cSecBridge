@@ -13,15 +13,15 @@ To perform quick testing and validation, run the **bash script** - `bash func_te
   * **Action:** Run `kubectl cluster-info`
   * **Expected Result:** The command should execute successfully and display the addresses of the Kubernetes control plane and services, confirming connectivity to the cluster.
 
-* \[ \] **TC-P02: Namespace Existence**  
+* \[ \] **TC-P02: Namespace Validation**  
   * **Action:** Run `kubectl get namespace csecbridge-dev`  
   * **Expected Result:** The command should return the csecbridge-dev namespace with a status of Active.
 
-* \[ \] **TC-P03: RBAC Role Existence**  
+* \[ \] **TC-P03: RBAC Role Validation**  
   * **Action:** Run `kubectl get role csb-app-manager -n csecbridge-dev`
   * **Expected Result:** Commands should return the role definition successfully.
 
-* \[ \] **TC-P04: ServiceAccount Existence**  
+* \[ \] **TC-P04: ServiceAccount Validation**  
   * **Action:** Run `kubectl get serviceaccount csecbridge-deployer -n csecbridge-dev`
   * **Expected Result:** Commands should return the service account definition successfully.
 
