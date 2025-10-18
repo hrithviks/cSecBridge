@@ -24,7 +24,7 @@ on:
       - dev
     paths:
       - "api_service/**"
-      - ".github/workflows/api-service-ci-cd.yaml"
+      - ".github/workflows/api-service.yaml"
 
   # Allows manual triggering (only enabled for DEV)
   workflow_dispatch:
@@ -89,9 +89,6 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v3
 
-      - name: Ensure dev namespace and RBAC
-        run: kubectl apply -k api_service/platform-config/overlays/dev
-
       - name: Create DEV Secrets
         uses: ./.github/actions/create-kube-secrets
         with:
@@ -104,7 +101,7 @@ jobs:
         uses: ./.github/actions/helm-deploy
         with:
           release_name: api-service-dev
-          namespace: csecbridge-dev
+          namespace: csb-dev
           chart_path: ./api_service/helm
           image_full_name: ${{ needs.lint-and-build.outputs.image_full_name }}
           # Overrides the default values set in helm configuration
