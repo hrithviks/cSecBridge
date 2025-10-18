@@ -19,11 +19,10 @@ concurrency:
 on:
   push:
     branches:
-      - main
-      - dev
+      - dummy # Dummy branch
     paths:
-      - "api_service/**"
-      - ".github/workflows/api-service.yaml"
+      - "postgres_db/**"
+      - ".github/workflows/db-service.yaml"
 
   # Allows manual triggering (only enabled for DEV)
   workflow_dispatch:
