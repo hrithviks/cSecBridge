@@ -1,6 +1,6 @@
-# -----------------------------------
-# Service Template for the Helm Chart
-# -----------------------------------
+# ------------------------------------------
+# Service Template for the Postgres Database
+# ------------------------------------------
 
 apiVersion: v1
 kind: Service

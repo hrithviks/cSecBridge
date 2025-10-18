@@ -1,8 +1,8 @@
-# ---------------------------------------
-# Network Policy Template for Helm Chart
-# ---------------------------------------
-
 {{- if .Values.networkPolicy.enabled -}}
+# ------------------------------------------------------------------------------------
+# Network Policy for the Postgres Database - allows incoming requests from API-Service
+# ------------------------------------------------------------------------------------
+
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
