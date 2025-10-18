@@ -35,6 +35,9 @@ jobs:
   lint-and-build:
     if: false # Disable for now
     runs-on: ubuntu-latest
+    steps:
+      - name: Default
+        run: echo "testing..."
 
   # JOB-1: Build the custom Docker image and push to github container registry.
   # JOB-2: Deploy to DEV
