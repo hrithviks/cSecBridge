@@ -119,7 +119,7 @@ run_db_ci_tests() {
 
   # DB-03: Test build failure - by introducing a syntax error in the Dockerfile
   sed -i.bak 's/COPY/COPPY/' "${DB_SERVICE_PATH}/Dockerfile"
-  if ! run_test "DB-03  : Docker Image Build (Failure)" "failure" "docker build -t csb-db-qa-fail:latest ${API_SERVICE_PATH}"; then
+  if ! run_test "DB-03  : Docker Image Build (Failure)" "failure" "docker build -t csb-db-qa-fail:latest ${DB_SERVICE_PATH}"; then
     overall_status=1
   fi
 
