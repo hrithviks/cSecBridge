@@ -20,62 +20,16 @@
 
 # Global configuration
 set -o pipefail # Exit on pipe failures
-
-# Report styles
-BOLD=$(tput bold)
-BLUE=$(tput setaf 4)
-GREEN=$(tput setaf 2)
-YELLOW=$(tput setaf 3)
-RED=$(tput setaf 1)
-RESET=$(tput sgr0)
+. ./set_test_env.sh
 
 # Test configuration for QA environment
 CSB_NAMESPACE="csb-qa"
 CSB_SA_NAME="csb-app-sa"
 CSB_ROLE_NAME="csb-app-deployer-role"
-
 API_SERVICE_PATH="../api_service"
 HELM_CHART_PATH="${API_SERVICE_PATH}/helm"
 RELEASE_NAME="ci-qa-api"
 
-# Logger function
-log_info() {
-  DT=`date "+%Y-%m-%d %H:%M:%S"`
-  echo "${DT} :: ${BOLD}${BLUE}==> ${RESET}${BOLD}$1${RESET}"
-}
-
-# Test runner function
-run_test() {
-  local test_name=$1
-  local expected_outcome=$2 # "success" or "failure"
-  shift 2
-  local command_to_run="$@"
-  local result=0
-
-  echo -n "${BOLD}${BLUE}[TEST] $test_name..."
-  
-  # Suppress command output for a clean report
-  if eval "$command_to_run" > /dev/null 2>&1; then
-    # Command succeeded
-    if [ "$expected_outcome" == "success" ]; then
-      echo " ${BOLD}${GREEN}[SUCCESS]${RESET}"
-      result=0
-    else
-      echo " ${BOLD}${RED}[FAILURE]${RESET} (Expected failure, but it succeeded)"
-      result=1
-    fi
-  else
-    # Command failed
-    if [ "$expected_outcome" == "failure" ]; then
-      echo " ${BOLD}${GREEN}[SUCCESS]${RESET} (Correctly failed as expected)"
-      result=0
-    else
-      echo " ${BOLD}${RED}[FAILURE]${RESET}"
-      result=1
-    fi
-  fi
-  return $result
-}
 
 # Environment setup function
 validate_environment() {

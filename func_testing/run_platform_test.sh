@@ -15,13 +15,7 @@
 
 # Global configuration
 set -o pipefail # Exit on pipe failures
-
-# Report styles
-BOLD=$(tput bold)
-BLUE=$(tput setaf 4)
-GREEN=$(tput setaf 2)
-RED=$(tput setaf 1)
-RESET=$(tput sgr0)
+. ./set_test_env.sh
 
 # Test configuration for QA environment
 PLATFORM_OVERLAY_PATH="../platform-config/overlays/dev"
@@ -29,12 +23,6 @@ NAMESPACE="csb-qa"
 ROLE_NAME="csb-app-deployer-role"
 SA_NAME="csb-app-sa"
 RB_NAME="qa-deployer-role-binding"
-
-# Logger function
-log_info() {
-  DT=`date "+%Y-%m-%d %H:%M:%S"`
-  echo "${DT} :: ${BOLD}${BLUE}==> ${RESET}${BOLD}$1${RESET}"
-}
 
 # Test runner function
 run_test() {
