@@ -26,7 +26,7 @@ set -o pipefail # Exit on pipe failures
 CSB_NAMESPACE="csb-qa"
 CSB_SA_NAME="csb-app-sa"
 CSB_ROLE_NAME="csb-app-deployer-role"
-API_SERVICE_PATH="../api_service"
+API_SERVICE_PATH="../api-service"
 HELM_CHART_PATH="${API_SERVICE_PATH}/helm"
 RELEASE_NAME="ci-qa-api"
 
