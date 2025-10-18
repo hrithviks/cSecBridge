@@ -27,16 +27,16 @@ csecbridge/
 ├── platform-config/
 │   ├── base/
 │   └── overlays/
-├── api\_service/
+├── api-service/
 │   ├── Dockerfile
 │   ├── helm/
 │   ├── source/
 │   ├── sql/
 │   └── unit_test/
-├── frontend\_service/
-├── worker\_service\_aws/
-├── worker\_service\_azure/
-├── postgres_db/
+├── frontend-service/
+├── worker-service-aws/
+├── worker-service-azure/
+├── postgres-db/
 │   ├── Dockerfile
 │   ├── init.sql
 │   ├── helm/
