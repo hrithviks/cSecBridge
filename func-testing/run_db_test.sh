@@ -30,7 +30,7 @@ log_info "Starting database testing"
 CSB_NAMESPACE="csb-qa"
 CSB_SA_NAME="csb-app-sa"
 CSB_ROLE_NAME="csb-app-deployer-role"
-DB_SERVICE_PATH="../postgres_db/"
+DB_SERVICE_PATH="../postgres-db/"
 HELM_CHART_PATH="${DB_SERVICE_PATH}/helm"
 RELEASE_NAME="csb-db-rel"
 

@@ -21,7 +21,7 @@ on:
     branches:
       - dummy # Dummy branch
     paths:
-      - "postgres_db/**"
+      - "postgres-db/**"
       - ".github/workflows/db-service.yaml"
 
   # Allows manual triggering (only enabled for DEV)
