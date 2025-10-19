@@ -32,6 +32,11 @@ spec:
     # Pod Spec
     spec:
 
+      # Service Account Details for the POD
+      {{- if .Values.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+
       # Image Pull Secrets - to be defined in helm install command
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
