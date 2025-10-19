@@ -25,7 +25,6 @@ set -o pipefail # Exit on pipe failures
 
 log_info "Starting database testing"
 
-
 # Test Configuration
 CSB_NAMESPACE="csb-qa"
 CSB_SA_NAME="csb-app-sa"
@@ -38,61 +37,56 @@ RELEASE_NAME="csb-db-rel"
 DB_PASSWORD="this_is_not_a_password"
 
 # Environment setup function
-setup_environment() {
-  
+validate_platform_config() {
+
+  local platform_val_status=0
   # Check environment variables
   log_info "Verifying github environment variables..."
   if [ -z ${GH_USER} ] || [ -z ${GH_TOKEN} ]; then
     log_info "${RED}Environment vars missing for the containerization section...${RESET}"
-    exit 1
+    platform_val_status=1
   fi
 
   # Environment variables for kubernetes secrets
   log_info "Verifying postgres environment variables..."
   if [ -z "${CSB_POSTGRES_PSWD}" ]; then
     log_info "${RED}Environment vars missing for the kubernetes secrets section...${RESET}"
-    exit 1
+    platform_val_status=1
   fi
   
   # Platform configuration - Check Namespace
-  log_info "Verifying namespace..."
+  log_info "Verifying kubernetes namespace..."
   if ! kubectl get namespace "$CSB_NAMESPACE" > /dev/null 2>&1; then
     log_info "${RED}Prerequisites missing: Namespace '${CSB_NAMESPACE}' does not exist...${RESET}"
     log_info "${RED}Please apply platform config before running tests...${RESET}"
-    exit 1
+    platform_val_status=1
   fi
 
   # Platform configuration - Check Service account
-  log_info "Verifying service account..."
+  log_info "Verifying kubernetes service account..."
   if ! kubectl get serviceaccount "$CSB_SA_NAME" -n "$CSB_NAMESPACE" > /dev/null 2>&1; then
     log_info "${RED}Prerequisites missing: ServiceAccount '${CSB_SA_NAME}' does not exist...${RESET}"
     log_info "${RED}Please apply platform config before running tests...${RESET}"
-    exit 1
+    platform_val_status=1
   fi
 
   # Platform configuration - Check RBAC
-  log_info "Verifying RBAC..."
+  log_info "Verifying kubernetes RBAC..."
   if ! kubectl get role "$CSB_ROLE_NAME" -n "$CSB_NAMESPACE" > /dev/null 2>&1; then
     log_info "${RED}Prerequisites missing: Role '${CSB_ROLE_NAME}' does not exist...${RESET}"
     log_info "${RED}Please apply platform config before running tests...${RESET}"
-    exit 1
+    platform_val_status=1
   fi
+
+  return $platform_val_status
 }
 
-teardown_environment() {
-  log_info "Tearing down isolated test environment: ${NAMESPACE}"
-  # Deleting the namespace automatically garbage collects all resources within it.
-  #kubectl delete namespace "$CSB_NAMESPACE" --ignore-not-found=true > /dev/null 2>&1
-  echo "Teardown complete."
-}
-
-run_db_ci_tests() {
+run_db_ci_cd_tests() {
   log_info "Running Database Service CI Validation..."
   local overall_status=0
   ###############################
   # Section 1: Containerization #
   ###############################
-  echo
   log_info "Section 1: Containerization Tests..."
 
   # Local Env Vars for Testing
@@ -132,7 +126,6 @@ run_db_ci_tests() {
   ###############################
   # Section 2: Kubernetes Tests #
   ###############################
-  echo
   log_info "Section 2: Kubernetes Tests..."
 
   # This command mimics a CI/CD pipeline securely creating the secret for admin user
@@ -172,7 +165,7 @@ run_db_ci_tests() {
   fi
   
   # DB-07 : Kubernetes Check Secret - GH Token
-  if ! run_test "DB-05  : Kubernetes Image Secret Check" "success" "kubectl get secret csb-gh-secret -n ${CSB_NAMESPACE}"; then
+  if ! run_test "DB-07  : Kubernetes Image Secret Check" "success" "kubectl get secret csb-gh-secret -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to get kubernetes secret for image token...${RESET}"
     return 2
   fi
@@ -180,7 +173,6 @@ run_db_ci_tests() {
   ###################################
   # Section 3: Helm Deployment Test #
   ###################################
-  echo
   log_info "Section 3: Helm Deployment Tests..."
 
   # DB-08 : Helm Deployment Test
@@ -203,16 +195,93 @@ run_db_ci_tests() {
   ###################################################
   # Section 4: Post Deployment Checks on Kubernetes #
   ###################################################
-  echo
   log_info "Section 4: Post Deployment Checks on Kubernetes..."
-  # Check if HBA config map exists
-  # Check if network policy exists
-  # Check if service exists
-  # Check if statefulset exists
-  # Check if POD exists with only 1 replica
+
+  # Local variables for the section
+  local HBA_CONFIGMAP="postgres-hba-config"
+  local NETWORK_POLICY="postgres-service"
+  local SERVICE_NAME="postgres-service"
+  local VOL_TEMPLATE="postgres-data"
+  local STATEFULSET="postgres-service"
+
+  # DB-10 : Check if HBA ConfigMap Exists
+  if ! run_test "DB-10  : PostgresDB HBA Config Map Validation" "success" "kubectl \
+  get configmap ${HBA_CONFIGMAP} -n ${CSB_NAMESPACE}"; then
+    log_info "${RED}Failed to validate the HBA Configmap...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-11 : Check if Network Policy Exists
+  # Note : This is a simple test, validating the existence of the network policy.
+  #        Parse the response of operation using json objects, 
+  #        to perform more advanced validations for specific networking rules.
+  if ! run_test "DB-11  : PostgresDB Network Policy Validation" "success" "kubectl \
+  get networkpolicy ${NETWORK_POLICY} -n ${CSB_NAMESPACE}"; then
+    log_info "${RED}Failed to validate the Network Policy...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-12 : Check if the ClusterIP Service Exists
+  if ! run_test "DB-12  : PostgresDB ClusterIP Service Validation" "success" "kubectl \
+  get service ${SERVICE_NAME} -n ${CSB_NAMESPACE}"; then
+    log_info "${RED}Failed to validate the ClusterIP Service...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-13 : Check if the StatefulSet is Ready
+  # Note: This is a simple test, testing the existence of the statefulset.
+  #       Parse the response of the operation using json objects, to 
+  #       perform more advanced validations for specific statefulset properties.
+  if ! run_test "DB-13  : PostgresDB StatefulSet Validation" "success" "kubectl \
+  get statefulset ${STATEFULSET} -n ${CSB_NAMESPACE}"; then
+    log_info "${RED}Failed to validate the StatefulSet...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-14 : Check if the Persistent Volume Claim Exists
+  if ! run_test "DB-14  : PostgresDB Persistent Volume Claim Validation" "success" "kubectl \
+  get pvc "${VOL_TEMPLATE}-$STATEFULSET-0" -n ${CSB_NAMESPACE}"; then
+    log_info "${RED}Failed to validate the Persistent Volume Claim...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-15 : Check if the POD is Running
+  if [ `kubectl get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET} | wc -l` -ne 0 ]; then
+    if ! run_test "DB-15  : PostgresDB POD Validation" "success" "kubectl \
+    get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET}-0 | grep Running"; then
+      log_info "${RED}Failed to validate the POD status...${RESET}"
+      overall_status=1
+    fi
+  else
+    log_info "${RED}Failed to validate the required POD Replica (1)...${RESET}"
+    overall_status=1
+  fi
+
   # Test connection to POD
   # Test connection to database
   # Test query on database (conninfo)
+  return $overall_status
+}
+
+teardown_environment() {
+  local teardown_status=0
+  log_info "Tearing down isolated test environment: ${CSB_NAMESPACE}"
+  # Deleting the namespace automatically garbage collects all resources within it.
+  log_info "Uninstalling Helm chart $RELEASE_NAME..."
+  if ! helm uninstall $RELEASE_NAME -n $CSB_NAMESPACE --ignore-not-found=true > /dev/null 2>&1; then
+    log_info "${RED}Failed to uninstall helm chart $RELEASE_NAME...${RESET}"
+    teardown_status=1
+  fi
+  log_info "Deleting namespace $CSB_NAMESPACE..."
+  if ! kubectl delete namespace "$CSB_NAMESPACE" --cascade > /dev/null 2>&1; then
+    log_info "${RED}Failed to delete namespace $CSB_NAMESPACE...${RESET}"
+    teardown_status=1
+  fi
+  if [ ${teardown_status} == 0 ]; then
+    log_info "Teardown complete..."
+  else
+    log_info "${RED}Teardown failed. Please check and clear resources manually...${RESET}"
+  fi 
 }
 
 ################
@@ -222,16 +291,26 @@ run_db_ci_tests() {
 # Ensure teardown runs even if the script is interrupted or fails
 trap teardown_environment EXIT
 
-setup_environment
-run_db_ci_tests
-final_status=$?
+# Platform validation
+if ! validate_platform_config; then
+  log_info "${RED}One or more platform validations failed...${RESET}"
+  exit 1
+else
+  log_info "${GREEN}All platform validations passed...${RESET}"
+fi
+
+if run_db_ci_cd_tests; then
+  final_status=0
+else
+  final_status=$?
+fi
 
 if [ $final_status -eq 0 ]; then
   log_info "${GREEN}All CI validation tests passed successfully...${RESET}"
 elif [ $final_status -eq 1 ]; then
   log_info "${RED}One or more CI validation tests failed...${RESET}"
 elif [ $final_status -eq 2 ]; then
-  log_info "${RED}Testing interrupted due to misconfiguration...${RESET}"
+  log_info "${RED}Testing interrupted due to unexpected misconfiguration...${RESET}"
 else
   log_info "${RED}Uknown error occurred during testing...${RESET}"
 fi
