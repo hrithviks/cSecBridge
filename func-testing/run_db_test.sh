@@ -96,24 +96,24 @@ run_db_ci_cd_tests() {
   local GHCR_IMAGE="ghcr.io/${GH_USER}/${IMAGE_NAME}:${IMAGE_TAG}"
 
   # DB-01: Test build success
-  if ! run_test "DB-01  : Docker Image Build" "success" "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERFILE_PATH}"; then
+  if ! run_test "DB-01  :: Docker Image Build" "success" "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERFILE_PATH}"; then
     return 2
   fi
 
   # DB-02: Test docker login(Section A) and push to github container registry(Section B)
-  if ! run_test "DB-02A : GitHub Container Registry Login" "success" "docker login ghcr.io -u ${GH_USER} -p ${GH_TOKEN}"; then
+  if ! run_test "DB-02A :: GitHub Container Registry Login" "success" "docker login ghcr.io -u ${GH_USER} -p ${GH_TOKEN}"; then
     overall_status=1
   else
     # If login successful, tag and test push
     docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$GHCR_IMAGE" 2>/dev/null
-    if ! run_test "DB-02B : Image Push to GitHub Container Registry" "success" "docker push ${GHCR_IMAGE}"; then
+    if ! run_test "DB-02B :: Image Push to GitHub Container Registry" "success" "docker push ${GHCR_IMAGE}"; then
       overall_status=1
     fi
   fi
 
   # DB-03: Test build failure - by introducing a syntax error in the Dockerfile
   sed -i.bak 's/COPY/COPPY/' "${DB_SERVICE_PATH}/Dockerfile"
-  if ! run_test "DB-03  : Docker Image Build (Failure)" "failure" "docker build -t csb-db-qa-fail:latest ${DB_SERVICE_PATH}"; then
+  if ! run_test "DB-03  :: Docker Image Build (Failure)" "failure" "docker build -t csb-db-qa-fail:latest ${DB_SERVICE_PATH}"; then
     overall_status=1
   fi
 
@@ -134,7 +134,7 @@ run_db_ci_cd_tests() {
   # Secret value is the actual password, retrieved from env vars (secrets on pipeline)
 
   # DB-04 : Kubernetes DB Secret Creation
-  if ! run_test "DB-04  : Kubernetes DB Secret Creation" "success" "kubectl create secret generic postgres-admin-secret \
+  if ! run_test "DB-04  :: Kubernetes DB Secret Creation" "success" "kubectl create secret generic postgres-admin-secret \
     --from-literal=csb-admin-password="${CSB_POSTGRES_PSWD}" \
     --namespace=${CSB_NAMESPACE} \
     --dry-run=client \
@@ -144,7 +144,7 @@ run_db_ci_cd_tests() {
   fi
   
   # DB-05 : Kubernetes Check Secret - DB Admin Password
-  if ! run_test "DB-05  : Kubernetes DB Secret Check" "success" "kubectl get secret postgres-admin-secret -n ${CSB_NAMESPACE}"; then
+  if ! run_test "DB-05  :: Kubernetes DB Secret Check" "success" "kubectl get secret postgres-admin-secret -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to get kubernetes secret for admin password...${RESET}"
     return 2
   fi
@@ -155,7 +155,7 @@ run_db_ci_cd_tests() {
   # Secret value is the actual github token, retrieved from env vars (secrets on pipeline)
 
   # DB-06 : Kubernetes GH Token Secret Creation
-  if ! run_test "DB-06  : Kubernetes Image Secret Creation" "success" "kubectl create secret generic csb-gh-secret \
+  if ! run_test "DB-06  :: Kubernetes Image Secret Creation" "success" "kubectl create secret generic csb-gh-secret \
     --from-literal=csb-gh-token="${GH_TOKEN}" \
     --namespace=${CSB_NAMESPACE} \
     --dry-run=client \
@@ -165,7 +165,7 @@ run_db_ci_cd_tests() {
   fi
   
   # DB-07 : Kubernetes Check Secret - GH Token
-  if ! run_test "DB-07  : Kubernetes Image Secret Check" "success" "kubectl get secret csb-gh-secret -n ${CSB_NAMESPACE}"; then
+  if ! run_test "DB-07  :: Kubernetes Image Secret Check" "success" "kubectl get secret csb-gh-secret -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to get kubernetes secret for image token...${RESET}"
     return 2
   fi
@@ -176,7 +176,7 @@ run_db_ci_cd_tests() {
   log_info "Section 3: Helm Deployment Tests..."
 
   # DB-08 : Helm Deployment Test
-  if ! run_test "DB-08  : Helm Installation Test" "success" "helm upgrade \
+  if ! run_test "DB-08  :: Helm Installation Test" "success" "helm upgrade \
   --install ${RELEASE_NAME} ${HELM_CHART_PATH} \
   --namespace ${CSB_NAMESPACE} \
   --set statefulset.image.uri=${GHCR_IMAGE} \
@@ -186,7 +186,7 @@ run_db_ci_cd_tests() {
   fi
 
   # DB-09 : Helm Installation Check
-  if ! run_test "DB-09  : Helm Installation Validation" "success" "helm list \
+  if ! run_test "DB-09  :: Helm Installation Validation" "success" "helm list \
   -A -n ${CSB_NAMESPACE} | grep ${RELEASE_NAME}"; then
     log_info "${RED}Failed to validate helm chart deployment...${RESET}"
     return 2
@@ -215,14 +215,14 @@ run_db_ci_cd_tests() {
   # Note : This is a simple test, validating the existence of the network policy.
   #        Parse the response of operation using json objects, 
   #        to perform more advanced validations for specific networking rules.
-  if ! run_test "DB-11  : PostgresDB Network Policy Validation" "success" "kubectl \
+  if ! run_test "DB-11  :: PostgresDB Network Policy Validation" "success" "kubectl \
   get networkpolicy ${NETWORK_POLICY} -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to validate the Network Policy...${RESET}"
     overall_status=1
   fi
 
   # DB-12 : Check if the ClusterIP Service Exists
-  if ! run_test "DB-12  : PostgresDB ClusterIP Service Validation" "success" "kubectl \
+  if ! run_test "DB-12  :: PostgresDB ClusterIP Service Validation" "success" "kubectl \
   get service ${SERVICE_NAME} -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to validate the ClusterIP Service...${RESET}"
     overall_status=1
@@ -232,14 +232,14 @@ run_db_ci_cd_tests() {
   # Note: This is a simple test, testing the existence of the statefulset.
   #       Parse the response of the operation using json objects, to 
   #       perform more advanced validations for specific statefulset properties.
-  if ! run_test "DB-13  : PostgresDB StatefulSet Validation" "success" "kubectl \
+  if ! run_test "DB-13  :: PostgresDB StatefulSet Validation" "success" "kubectl \
   get statefulset ${STATEFULSET} -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to validate the StatefulSet...${RESET}"
     overall_status=1
   fi
 
   # DB-14 : Check if the Persistent Volume Claim Exists
-  if ! run_test "DB-14  : PostgresDB Persistent Volume Claim Validation" "success" "kubectl \
+  if ! run_test "DB-14  :: PostgresDB Persistent Volume Claim Validation" "success" "kubectl \
   get pvc "${VOL_TEMPLATE}-$STATEFULSET-0" -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to validate the Persistent Volume Claim...${RESET}"
     overall_status=1
@@ -250,7 +250,7 @@ run_db_ci_cd_tests() {
   #       Additional checks to be added to validate the pod configuration by 
   #.       
   if [ `kubectl get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET} | wc -l` -ne 0 ]; then
-    if ! run_test "DB-15  : PostgresDB POD Validation" "success" "kubectl \
+    if ! run_test "DB-15  :: PostgresDB POD Validation" "success" "kubectl \
     get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET}-0 | grep Running"; then
       log_info "${RED}Failed to validate the POD status...${RESET}"
       overall_status=1
@@ -268,18 +268,29 @@ run_db_ci_cd_tests() {
 
 teardown_environment() {
   local teardown_status=0
+  local VOL_TEMPLATE="postgres-data"
+  local STATEFULSET="postgres-service"
   log_info "Tearing down isolated test environment: ${CSB_NAMESPACE}"
+
   # Deleting the namespace automatically garbage collects all resources within it.
   log_info "Uninstalling Helm chart $RELEASE_NAME..."
   if ! helm uninstall $RELEASE_NAME -n $CSB_NAMESPACE --ignore-not-found=true > /dev/null 2>&1; then
     log_info "${RED}Failed to uninstall helm chart $RELEASE_NAME...${RESET}"
     teardown_status=1
   fi
+
+  log_info "Deleting persistent volume claim..."
+  if ! kubectl delete pvc "${VOL_TEMPLATE}-$STATEFULSET-0" -n ${CSB_NAMESPACE} > /dev/null 2>&1; then
+    log_info "${RED}Failed to delete persistent volume claim...${RESET}"
+    teardown_status=1
+  fi
+
   log_info "Deleting namespace $CSB_NAMESPACE..."
   if ! kubectl delete namespace "$CSB_NAMESPACE" --cascade > /dev/null 2>&1; then
     log_info "${RED}Failed to delete namespace $CSB_NAMESPACE...${RESET}"
     teardown_status=1
   fi
+
   if [ ${teardown_status} == 0 ]; then
     log_info "Teardown complete..."
   else

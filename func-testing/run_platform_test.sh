@@ -18,7 +18,7 @@ set -o pipefail # Exit on pipe failures
 . ./set_test_env.sh
 
 # Test configuration for QA environment
-PLATFORM_OVERLAY_PATH="../platform-config/overlays/dev"
+PLATFORM_OVERLAY_PATH="../platform-config/overlays/qa"
 NAMESPACE="csb-qa"
 ROLE_NAME="csb-app-deployer-role"
 SA_NAME="csb-app-sa"
@@ -46,8 +46,8 @@ run_test() {
 
 # Setup function
 setup_environment() {
-  log_info "Setting up test environment..."
-  if ! kubectl apply -k "$PLATFORM_OVERLAY_PATH"; then
+  log_info "Setting up qa test environment..."
+  if ! kubectl apply -k "$PLATFORM_OVERLAY_PATH" >/dev/null 2>&1; then
     log_info "${RED}Failed to apply platform configuration. Aborting.${RESET}"
     exit 1
   fi
@@ -61,25 +61,23 @@ run_validation_tests() {
   log_info "Running platform validation tests..."
   local all_tests_passed=true
 
-  echo
-
   # TC-P01: `kubectl` Connectivity Verification
-  if ! run_test "TC-P01:: Kubectl Connectivity" "kubectl cluster-info"; then
+  if ! run_test "TC-P01  :: Kubectl Connectivity" "kubectl cluster-info"; then
     all_tests_passed=false
   fi
 
   # TC-P02: Namespace Existence
-  if ! run_test "TC-P02:: Namespace '${NAMESPACE}' exists" "kubectl get namespace ${NAMESPACE}"; then
+  if ! run_test "TC-P02  :: Namespace '${NAMESPACE}' exists" "kubectl get namespace ${NAMESPACE}"; then
     all_tests_passed=false
   fi
 
   # TC-P03: RBAC Role Existence
-  if ! run_test "TC-P03:: Role '${ROLE_NAME}' exists" "kubectl get role ${ROLE_NAME} -n ${NAMESPACE}"; then
+  if ! run_test "TC-P03  :: Role '${ROLE_NAME}' exists" "kubectl get role ${ROLE_NAME} -n ${NAMESPACE}"; then
     all_tests_passed=false
   fi
 
   # TC-P04: ServiceAccount Existence
-  if ! run_test "TC-P04:: ServiceAccount '${SA_NAME}' exists" "kubectl get serviceaccount ${SA_NAME} -n ${NAMESPACE}"; then
+  if ! run_test "TC-P04  :: ServiceAccount '${SA_NAME}' exists" "kubectl get serviceaccount ${SA_NAME} -n ${NAMESPACE}"; then
     all_tests_passed=false
   fi
 
@@ -90,11 +88,9 @@ run_validation_tests() {
     (.roleRef.name == \"${ROLE_NAME}\") and 
     (.subjects[0].kind == \"ServiceAccount\") and 
     (.subjects[0].name == \"${SA_NAME}\")'"
-  if ! run_test "TC-P05:: RoleBinding '${RB_NAME}' links correctly" "${check_binding_command}"; then
+  if ! run_test "TC-P05  :: RoleBinding '${RB_NAME}' links correctly" "${check_binding_command}"; then
     all_tests_passed=false
   fi
-
-  echo
 
   if [ "$all_tests_passed" == true ]; then
     log_info "${GREEN}All platform validation tests passed!${RESET}"
@@ -118,7 +114,7 @@ teardown_environment() {
 ################
 
 # Ensure teardown runs even if the script is interrupted (e.g., with Ctrl+C)
-trap teardown_environment EXIT
+# trap teardown_environment EXIT
 
 # Run the stages in order
 setup_environment
