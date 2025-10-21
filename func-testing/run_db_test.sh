@@ -246,6 +246,9 @@ run_db_ci_cd_tests() {
   fi
 
   # DB-15 : Check if the POD is Running
+  # Note: This is a very basic check for the POD status for DB service.
+  #       Additional checks to be added to validate the pod configuration by 
+  #.       
   if [ `kubectl get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET} | wc -l` -ne 0 ]; then
     if ! run_test "DB-15  : PostgresDB POD Validation" "success" "kubectl \
     get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET}-0 | grep Running"; then
@@ -289,6 +292,7 @@ teardown_environment() {
 ################
 
 # Ensure teardown runs even if the script is interrupted or fails
+# To persist test platform, comment the "trap" section out.
 trap teardown_environment EXIT
 
 # Platform validation
