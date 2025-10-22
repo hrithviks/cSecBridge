@@ -53,6 +53,13 @@ validate_platform_config() {
     log_info "${RED}Environment vars missing for the kubernetes secrets section...${RESET}"
     platform_val_status=1
   fi
+
+  # Environment variables for user administration
+  log_info "Verifying database user environment variables..."
+  if [ -z "${CSB_APP_USER_PSWD}" ] || [ -z "${CSB_API_USER_PSWD}" ]; then
+    log_info "${RED} Missing environment variables for testing app and api user administration"
+    return 2
+  fi
   
   # Platform configuration - Check Namespace
   log_info "Verifying kubernetes namespace..."
@@ -140,13 +147,13 @@ run_db_ci_cd_tests() {
     --dry-run=client \
     -o yaml | kubectl apply -f - > /dev/null 2>&1"; then
     log_info "${RED}Failed to create kubernetes secret for admin password...${RESET}"
-    return 2
+    return 127
   fi
   
   # DB-05 : Kubernetes Check Secret - DB Admin Password
   if ! run_test "DB-05  :: Kubernetes DB Secret Check" "success" "kubectl get secret postgres-admin-secret -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to get kubernetes secret for admin password...${RESET}"
-    return 2
+    return 127
   fi
 
   # This command mimics a CI/CD pipeline securely creating the secret for github token
@@ -162,13 +169,13 @@ run_db_ci_cd_tests() {
     --dry-run=client \
     -o yaml | kubectl apply -f - > /dev/null 2>&1"; then
     log_info "${RED}Failed to create kubernetes secret for image token...${RESET}"
-    return 2
+    return 127
   fi
   
   # DB-07 : Kubernetes Check Secret - GH Token
   if ! run_test "DB-07  :: Kubernetes Image Secret Check" "success" "kubectl get secret csb-gh-secret -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to get kubernetes secret for image token...${RESET}"
-    return 2
+    return 127
   fi
 
   ###################################
@@ -183,7 +190,7 @@ run_db_ci_cd_tests() {
   --set statefulset.image.uri=${GHCR_IMAGE} \
   --wait --timeout=5m > /tmp/helm_install_$$.log 2>&1"; then
     log_info "${RED}Failed to deploy helm chart...${RESET}"
-    return 2
+    return 127
   fi
   sleep 5
 
@@ -191,7 +198,7 @@ run_db_ci_cd_tests() {
   if ! run_test "DB-09  :: Helm Installation Validation" "success" "helm list \
   -A -n ${CSB_NAMESPACE} | grep ${RELEASE_NAME}"; then
     log_info "${RED}Failed to validate helm chart deployment...${RESET}"
-    return 2
+    return 127
   fi
 
   ###################################################
@@ -207,7 +214,7 @@ run_db_ci_cd_tests() {
   local STATEFULSET="postgres-service"
 
   # DB-10 : Check if HBA ConfigMap Exists
-  if ! run_test "DB-10  : PostgresDB HBA Config Map Validation" "success" "kubectl \
+  if ! run_test "DB-10  :: PostgresDB HBA Config Map Validation" "success" "kubectl \
   get configmap ${HBA_CONFIGMAP} -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to validate the HBA Configmap...${RESET}"
     overall_status=1
@@ -218,14 +225,14 @@ run_db_ci_cd_tests() {
   #        Parse the response of operation using json objects, 
   #        to perform more advanced validations for specific networking rules.
   if ! run_test "DB-11  :: PostgresDB Network Policy Validation" "success" "kubectl \
-  get networkpolicy ${NETWORK_POLICY} -n ${CSB_NAMESPACE}"; then
+  get networkpolicy ${NETWORK_POLICY} -n ${CSB_NAMESPACE} > /dev/null 2>&1"; then
     log_info "${RED}Failed to validate the Network Policy...${RESET}"
     overall_status=1
   fi
 
   # DB-12 : Check if the ClusterIP Service Exists
   if ! run_test "DB-12  :: PostgresDB ClusterIP Service Validation" "success" "kubectl \
-  get service ${SERVICE_NAME} -n ${CSB_NAMESPACE}"; then
+  get service ${SERVICE_NAME} -n ${CSB_NAMESPACE} > /dev/null 2>&1"; then
     log_info "${RED}Failed to validate the ClusterIP Service...${RESET}"
     overall_status=1
   fi
@@ -235,14 +242,14 @@ run_db_ci_cd_tests() {
   #       Parse the response of the operation using json objects, to 
   #       perform more advanced validations for specific statefulset properties.
   if ! run_test "DB-13  :: PostgresDB StatefulSet Validation" "success" "kubectl \
-  get statefulset ${STATEFULSET} -n ${CSB_NAMESPACE}"; then
+  get statefulset ${STATEFULSET} -n ${CSB_NAMESPACE} > /dev/null 2>&1"; then
     log_info "${RED}Failed to validate the StatefulSet...${RESET}"
     overall_status=1
   fi
 
   # DB-14 : Check if the Persistent Volume Claim Exists
   if ! run_test "DB-14  :: PostgresDB Persistent Volume Claim Validation" "success" "kubectl \
-  get pvc "${VOL_TEMPLATE}-$STATEFULSET-0" -n ${CSB_NAMESPACE}"; then
+  get pvc "${VOL_TEMPLATE}-$STATEFULSET-0" -n ${CSB_NAMESPACE} > /dev/null 2>&1"; then
     log_info "${RED}Failed to validate the Persistent Volume Claim...${RESET}"
     overall_status=1
   fi
@@ -253,7 +260,7 @@ run_db_ci_cd_tests() {
   #.       
   if [ `kubectl get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET} | wc -l` -ne 0 ]; then
     if ! run_test "DB-15  :: PostgresDB POD Validation" "success" "kubectl \
-    get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET}-0 | grep Running"; then
+    get pod -n ${CSB_NAMESPACE} | grep ${STATEFULSET}-0 | grep Running > /dev/null 2>&1"; then
       log_info "${RED}Failed to validate the POD status...${RESET}"
       overall_status=1
     fi
@@ -262,9 +269,46 @@ run_db_ci_cd_tests() {
     overall_status=1
   fi
 
-  # Test connection to POD
-  # Test connection to database
-  # Test query on database (conninfo)
+  ##########################################################
+  # Section 5: Database Service Validation and Admin Tasks #
+  ##########################################################
+  log_info "Section 5: Database Service Validation and Admin Tasks..."
+
+  local POD_NAME=${STATEFULSET}-0
+  local POSTGRES_DB="csb_app_db"
+  local POSTGRES_ADMIN="csb_admin"
+  local KUBE_PSQL_EXEC_CMD="kubectl exec -n ${CSB_NAMESPACE} ${POD_NAME} -- \
+  psql -U ${POSTGRES_ADMIN} -d ${POSTGRES_DB} -c"
+
+  # DB-16 :Test POD Service Status
+  # Check the ready prob of postgres-service pod to ensure it is accepting connections
+  if ! run_test "DB-16  :: PostgresDB Service Validation" "success" "kubectl \
+  wait --for=condition=Ready pod/${POD_NAME} -n ${CSB_NAMESPACE} --timeout=1m > /dev/null 2>&1"; then
+    log_info "${RED}Service validation failed for postgresDB service...${RESET}"
+    return 127
+  fi
+
+  # DB-17 : Test connection to database using admin and execute \conninfo query
+  local PSQL_TEST_CMD="${KUBE_PSQL_EXEC_CMD} 'SELECT 1;'"
+  if ! run_test "DB-17  :: PostgresDB Connection Validation" "success" "${PSQL_TEST_CMD}"; then
+    log_info "${RED}Connection validation failed for postgresDB service...${RESET}"
+    return 127
+  fi
+
+  # DB-18A : Validate administration for App user
+  local PSQL_ALTER_APP_USER_CMD="${KUBE_PSQL_EXEC_CMD} \"ALTER ROLE CSB_APP WITH PASSWORD '${CSB_APP_USER_PSWD}';\""
+  local PSQL_ALTER_API_USER_CMD="${KUBE_PSQL_EXEC_CMD} \"ALTER ROLE CSB_API_USER WITH PASSWORD '${CSB_API_USER_PSWD}';\""
+  if ! run_test "DB-18A :: PostgresDB APP User Administration" "success" "${PSQL_ALTER_APP_USER_CMD}"; then
+    log_info "${RED}Administration failed for app user...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-18B : Validate administration for Api user
+  if ! run_test "DB-18B :: PostgresDB API User Administration" "success" "${PSQL_ALTER_API_USER_CMD}"; then
+    log_info "${RED}Administration failed for api user...${RESET}"
+    overall_status=1
+  fi
+
   return $overall_status
 }
 
@@ -331,6 +375,8 @@ elif [ $final_status -eq 1 ]; then
   log_info "${RED}One or more CI validation tests failed...${RESET}"
 elif [ $final_status -eq 2 ]; then
   log_info "${RED}Testing interrupted due to unexpected misconfiguration...${RESET}"
+elif [ $final_status -eq 127 ]; then
+  log_info "${RED}Testing aborted...${RESET}"
 else
   log_info "${RED}Uknown error occurred during testing...${RESET}"
 fi
