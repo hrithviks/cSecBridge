@@ -37,12 +37,13 @@ spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
 
-      # Image Pull Secrets - to be defined in helm install command
+      # Use the docker-registry secret
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       {{- end }}
 
+      # Container configuration for the POD
       containers:
         - name: postgres
           image: {{ .Values.statefulset.image.uri }}
@@ -100,7 +101,7 @@ spec:
           
           # Volume Mounts for the database
           volumeMounts:
-            - name: postgres-data
+            - name: postgres-db-data
               mountPath: /var/lib/postgresql/data
             - name: hba-config
               mountPath: {{ .Values.hbaConfig.mountPath }}
@@ -116,7 +117,7 @@ spec:
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:
   - metadata:
-      name: postgres-data
+      name: postgres-db-data
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
