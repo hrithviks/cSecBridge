@@ -151,12 +151,13 @@ run_db_ci_cd_tests() {
 
   # This command mimics a CI/CD pipeline securely creating the secret for github token
   # Secret name is "csb-gh-secret"
-  # Secret key is "csb-gh-token"
-  # Secret value is the actual github token, retrieved from env vars (secrets on pipeline)
+  # Secret type is a Docker registry secret, comprising of username, access token and server name
 
   # DB-06 : Kubernetes GH Token Secret Creation
-  if ! run_test "DB-06  :: Kubernetes Image Secret Creation" "success" "kubectl create secret generic csb-gh-secret \
-    --from-literal=csb-gh-token="${GH_TOKEN}" \
+  if ! run_test "DB-06  :: Kubernetes Image Secret Creation" "success" "kubectl create secret docker-registry csb-gh-secret \
+    --docker-server="ghcr.io" \
+    --docker-username="${GH_USER}" \
+    --docker-password="${GH_TOKEN}" \
     --namespace=${CSB_NAMESPACE} \
     --dry-run=client \
     -o yaml | kubectl apply -f - > /dev/null 2>&1"; then
@@ -184,6 +185,7 @@ run_db_ci_cd_tests() {
     log_info "${RED}Failed to deploy helm chart...${RESET}"
     return 2
   fi
+  sleep 5
 
   # DB-09 : Helm Installation Check
   if ! run_test "DB-09  :: Helm Installation Validation" "success" "helm list \
@@ -201,7 +203,7 @@ run_db_ci_cd_tests() {
   local HBA_CONFIGMAP="postgres-hba-config"
   local NETWORK_POLICY="postgres-service"
   local SERVICE_NAME="postgres-service"
-  local VOL_TEMPLATE="postgres-data"
+  local VOL_TEMPLATE="postgres-db-data"
   local STATEFULSET="postgres-service"
 
   # DB-10 : Check if HBA ConfigMap Exists
@@ -268,7 +270,7 @@ run_db_ci_cd_tests() {
 
 teardown_environment() {
   local teardown_status=0
-  local VOL_TEMPLATE="postgres-data"
+  local VOL_TEMPLATE="postgres-db-data"
   local STATEFULSET="postgres-service"
   log_info "Tearing down isolated test environment: ${CSB_NAMESPACE}"
 
@@ -278,18 +280,21 @@ teardown_environment() {
     log_info "${RED}Failed to uninstall helm chart $RELEASE_NAME...${RESET}"
     teardown_status=1
   fi
+  sleep 5
 
   log_info "Deleting persistent volume claim..."
   if ! kubectl delete pvc "${VOL_TEMPLATE}-$STATEFULSET-0" -n ${CSB_NAMESPACE} > /dev/null 2>&1; then
     log_info "${RED}Failed to delete persistent volume claim...${RESET}"
     teardown_status=1
   fi
+  sleep 5
 
   log_info "Deleting namespace $CSB_NAMESPACE..."
   if ! kubectl delete namespace "$CSB_NAMESPACE" --cascade > /dev/null 2>&1; then
     log_info "${RED}Failed to delete namespace $CSB_NAMESPACE...${RESET}"
     teardown_status=1
   fi
+  sleep 5
 
   if [ ${teardown_status} == 0 ]; then
     log_info "Teardown complete..."
@@ -304,7 +309,7 @@ teardown_environment() {
 
 # Ensure teardown runs even if the script is interrupted or fails
 # To persist test platform, comment the "trap" section out.
-trap teardown_environment EXIT
+# trap teardown_environment EXIT
 
 # Platform validation
 if ! validate_platform_config; then
