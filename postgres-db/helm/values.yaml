@@ -13,7 +13,7 @@ statefulset:
   replicaCount: 1
   image:
     uri: "ghcr.io/hrithviks/csb-db-qa"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "latest"
 
   # Health probes for the container.
@@ -47,16 +47,15 @@ service:
 # Configures the PersistentVolumeClaim for durable data storage.
 persistence:
   enabled: true
-  size: 10Gi
-  # The storage class to use. For now, we use the cluster default.
-  # storageClassName: ""
+  size: 1Gi
+  storageClassName: "standard"
 
 # *** POSTGRES APP CONFIGURATION ***
 # These values are passed as environment variables to the PostgreSQL container
 # to configure the database instance itself.
 databaseConfig:
-  name: "csb-app-db"
-  user: "csb-admin"
+  name: "csb_app_db"
+  user: "csb_admin"
 
 # *** SECRETS ***
 # Secret definition for illustration only; All secrets will be generated
@@ -86,8 +85,7 @@ hbaConfig:
   configMapName: "postgres-hba-config"
   data: |
     # TYPE  DATABASE        USER            ADDRESS                 METHOD
-    local   all             csb-admin                               peer
-    local   all             all                                     scram-sha-256
+    local   all             all                                     trust
     host    all             all             127.0.0.1/32            scram-sha-256
     host    all             all             ::1/128                 scram-sha-256
     host    replication     all             0.0.0.0/0               scram-sha-256
