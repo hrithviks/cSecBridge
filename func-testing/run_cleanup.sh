@@ -12,7 +12,7 @@
 #   4. Delete local docker images.
 #   5. Unset all sensitive environment variables for testing.
 #
-# Usage: ./run_db_tests.sh
+# Usage: ./run_cleanup.sh
 # -----------------------------------------------------------------------------
 
 # Global configuration
