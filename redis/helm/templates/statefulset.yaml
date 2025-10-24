@@ -76,8 +76,8 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secret.name }}
-                  key: {{ .Values.secret.key }}
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.key }}
           
           volumeMounts:
             # Persistent storage for AOF file
