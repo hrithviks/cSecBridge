@@ -2,6 +2,11 @@
 # This file is structured to group values by the Kubernetes resource or
 # logical component they configure.
 
+# *** SERVICEACCOUNT ***
+serviceAccount:
+  enabled: true
+  name: csb-app-sa
+
 # *** STATEFULSET ***
 # Values that configure the StatefulSet resource which manages the redis pod.
 statefulset:
