@@ -66,17 +66,17 @@ run_test() {
 }
 
 # Set environment variables
-export CSB_API_AUTH_TOKEN="dummy_test_non_sensitive_token_value"
+# export CSB_API_AUTH_TOKEN="dummy_test_non_sensitive_token_value"
 
 # Postgres
-export CSB_POSTGRES_HOST=
-export CSB_POSTGRES_DB="csb_db"
-export CSB_POSTGRES_PORT=2345
-export CSB_POSTGRES_USER="CSB_API_USER"
-#export CSB_POSTGRES_PSWD="dummy_password_for_db"
-export CSB_POSTGRES_MAX_CONN=5
+# export CSB_POSTGRES_HOST=
+# export CSB_POSTGRES_DB="csb_db"
+# export CSB_POSTGRES_PORT=2345
+# export CSB_POSTGRES_USER="CSB_API_USER"
+# export CSB_POSTGRES_PSWD="dummy_password_for_db"
+# export CSB_POSTGRES_MAX_CONN=5
 
 # Redis
-export CSB_REDIS_HOST=
-export CSB_REDIS_PORT=2367
-export CSB_REDIS_PSWD=
+# export CSB_REDIS_HOST=
+# export CSB_REDIS_PORT=2367
+# export CSB_REDIS_PSWD=
