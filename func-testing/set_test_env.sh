@@ -23,13 +23,18 @@ log_info() {
 
 # Format success message
 log_success() {
-  echo "    ${BOLD}${GREEN}[SUCCESS]${RESET} $1"
+  local tc_name=$1
+  shift
+  local message="$@"
+  echo "${BOLD}${BLUE}[TEST] $tc_name  $message... ${BOLD}${GREEN}[SUCCESS]${RESET}"
 }
 
 # Format failure message
 log_failure() {
-  echo "    ${BOLD}${RED}[FAILURE]${RESET} $1"
-  exit 1
+  local tc_name=$1
+  shift
+  local message="$@"
+  echo "${BOLD}${BLUE}[TEST] $tc_name  $message... ${BOLD}${RED}[FAILURE]${RESET}"
 }
 
 # Test runner function
@@ -49,13 +54,13 @@ run_test() {
       echo " ${BOLD}${GREEN}[SUCCESS]${RESET}"
       result=0
     else
-      echo " ${BOLD}${RED}[FAILURE]${RESET} (Expected failure, but it succeeded)"
+      echo " ${BOLD}${RED}[FAILURE]${RESET}"
       result=1
     fi
   else
     # Command failed
     if [ "$expected_outcome" == "failure" ]; then
-      echo " ${BOLD}${GREEN}[SUCCESS]${RESET} (Correctly failed as expected)"
+      echo " ${BOLD}${GREEN}[SUCCESS]${RESET}"
       result=0
     else
       echo " ${BOLD}${RED}[FAILURE]${RESET}"
@@ -65,18 +70,21 @@ run_test() {
   return $result
 }
 
-# Set environment variables
-# export CSB_API_AUTH_TOKEN="dummy_test_non_sensitive_token_value"
+# Evaluate results and log test case to stdout
+eval_and_log_test_case() {
+  local test_name=$1
 
-# Postgres
-# export CSB_POSTGRES_HOST=
-# export CSB_POSTGRES_DB="csb_db"
-# export CSB_POSTGRES_PORT=2345
-# export CSB_POSTGRES_USER="CSB_API_USER"
-# export CSB_POSTGRES_PSWD="dummy_password_for_db"
-# export CSB_POSTGRES_MAX_CONN=5
-
-# Redis
-# export CSB_REDIS_HOST=
-# export CSB_REDIS_PORT=2367
-# export CSB_REDIS_PSWD=
+  # The rest of the arguments form the command to run
+  shift
+  local condition="$@"
+  echo -n "${BOLD}${BLUE}[TEST] $test_name..."
+  
+  # Execute the command, redirecting output to /dev/null to keep the report clean
+  if $condition; then
+    echo " ${BOLD}${GREEN}[SUCCESS]${RESET}"
+    return 0
+  else
+    echo " ${BOLD}${RED}[FAILURE]${RESET}"
+    return 1
+  fi
+}
