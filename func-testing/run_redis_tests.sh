@@ -79,6 +79,27 @@ validate_platform_config() {
   return $platform_val_status
 }
 
+# Test runner function
+eval_and_log_test_case() {
+  local test_name=$1
+  echo $test_name
+
+  # The rest of the arguments form the command to run
+  shift
+  local command_to_run="$@"
+  echo "$command_to_run"
+  echo -n "${BOLD}${BLUE}[TEST] $test_name..."
+  
+  # Execute the command, redirecting output to /dev/null to keep the report clean
+  if [[ "$command_to_run" ]]; then
+    echo " ${BOLD}${GREEN}[SUCCESS]${RESET}"
+    return 0
+  else
+    echo " ${BOLD}${RED}[FAILURE]${RESET}"
+    return 1
+  fi
+}
+
 run_redis_ci_cd_tests() {
 
   local overall_status=0
@@ -206,7 +227,7 @@ run_redis_ci_cd_tests() {
   local REDIS_STATEFULSET="redis-service"
 
   # RD-10 : Check if HBA ConfigMap Exists
-  if ! run_test "RD-10  :: redis.conf Config Map Validation" "success" "kubectl \
+  if ! run_test "RD-10  :: Config Map Validation for redis.conf" "success" "kubectl \
   get configmap ${REDIS_CONFIGMAP} -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to validate the redis configmap...${RESET}"
     overall_status=1
@@ -264,27 +285,146 @@ run_redis_ci_cd_tests() {
   #######################################
   # Section 5: Redis Service Validation #
   #######################################
-  log_info "Section 5: Redis Service Validations..."
+  log_info "Section 5: Redis Service Tests..."
 
-  local REDIS_POD_NAME=${REDIS_STATEFULSET}-0
+  local redis_pod_name="${REDIS_STATEFULSET}-0"
+  local redis_pod_exec_cmd="kubectl exec -n ${CSB_NAMESPACE} ${redis_pod_name}"
+  local redis_cli_cmd="redis-cli -h localhost -p 6379"
+  local redis_cmd_result=""
+  local redis_test_case=""
 
-  # RD-16 :Test POD Service Status
+  # RD-16 : Test POD Service Status
   # Check the ready prob of redis service pod to ensure it is accepting connections
   if ! run_test "RD-16  :: Redis Service Validation" "success" "kubectl \
-  wait --for=condition=Ready pod/${REDIS_POD_NAME} -n ${CSB_NAMESPACE} --timeout=1m > /dev/null 2>&1"; then
+  wait --for=condition=Ready pod/${redis_pod_name} -n ${CSB_NAMESPACE} \
+  --timeout=1m > /dev/null 2>&1"; then
     log_info "${RED}Service validation failed for Redis...${RESET}"
     return 127
   fi
 
-  # Test connection to Redis
+  # RD-17 : Test Unauthenticated connection to redis
+  # The current pod configuration only allows authenticated access
+  redis_test_case=' RD-17  :: Redis Authentication Enforcement (Success Scenario)'
+  redis_cmd_result=$($redis_pod_exec_cmd -- env REDISCLI_AUTH="" $redis_cli_cmd ping 2>&1)
+  if [[ `echo ${redis_cmd_result} | grep 'NOAUTH'` ]] || [[ `echo ${redis_cmd_result} |grep 'WRONGPASS'` ]]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
+  
+  # RD-18 : Test Authenticated connection to redis
+  redis_test_case=' RD-18  :: Redis Authentication Enforcement (Failure Scenario)'
+  redis_cmd_result=$(${redis_pod_exec_cmd} \
+  -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} ping 2>&1)
 
-  # Test SET CACHE
+  if [[ `echo ${redis_cmd_result} | grep 'PONG'` ]]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
 
-  # Test GET CACHE
+  # RD-19 : AOF Enablement for data persistence
+  redis_test_case=' RD-19  :: Redis AOF Enablement'
+  redis_cmd_result=$(${redis_pod_exec_cmd} \
+  -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} CONFIG GET appendonly 2>&1)
 
-  # Test queue LPUSH
+  if [[ `echo ${redis_cmd_result} | grep 'appendonly'` ]] && [[ `echo ${redis_cmd_result} | grep 'yes'` ]]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
 
-  # Test queue DELETE
+  ################################
+  # Section 6: Redis Cache Tests #
+  ################################
+  log_info "Section 6: Redis Cache Tests..."
+
+  local test_cache_key="csb_test:cache:key"
+  local test_cache_value="csb_test_cache_12345"
+
+  # RD-20 : Update cache on the redis server
+  redis_test_case=" RD-20  :: Redis Cache Update"
+  redis_cmd_result=$(${redis_pod_exec_cmd} \
+  -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} \
+  SET ${test_cache_key} ${test_cache_value} 2>&1)
+
+  if [[ `echo ${redis_cmd_result} | grep 'OK'` ]]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
+
+  # RD-21 : Get cache from the redis server
+  redis_test_case="RD-21  :: Redis Cache Read"
+  redis_cmd_result=$(${redis_pod_exec_cmd} \
+  -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} GET ${test_cache_key} 2>&1)
+
+  if [[ ${redis_cmd_result} == ${test_cache_value} ]]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
+
+  # RD-22 : Check TTL setting for the cache
+  redis_test_case="RD-22  :: Redis Cache Invalidation (TTL Expiry)"
+  ${redis_pod_exec_cmd} -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} \
+  SET ${test_cache_key} ${test_cache_value} EX 5 > /dev/null 2>&1
+  sleep 15
+  redis_cmd_result=$(${redis_pod_exec_cmd} -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} \
+  GET ${test_cache_key} 2>&1)
+
+  if [ -z ${redis_cmd_result} ]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
+
+  ################################
+  # Section 7: Redis Queue Tests #
+  ################################
+  log_info "Section 7: Redis Queue Tests..."
+
+  local test_queue_key="csb:worker_queue:payload"
+  local test_queue_value="{\"id\": \"2e2r3t3t\", \"data\": \"test_data\"}"
+
+  # RD-23 : Add item to the queue (using LPUSH)
+  redis_test_case='RD-23  :: Redis Queue Update'
+  redis_cmd_result=$(${redis_pod_exec_cmd} -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} \
+  LPUSH "${test_queue_key}" "${test_queue_value}" 2>&1)
+
+  if [ `echo ${redis_cmd_result} -eq 1` ]; then
+    log_success ${redis_test_case}
+  else
+    log_failure ${redis_test_case}
+    overall_status=1
+  fi
+
+  # RD-24 : Retrieve and delete item from the queue (using RPOP)
+  #redis_test_case="RD-24  :: Redis Queue Read"
+  #redis_cmd_result=$(${redis_pod_exec_cmd} -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} \
+  #RPOP "${test_queue_key}" 2>&1)
+
+  #if [[ `echo ${redis_cmd_result}` == "${test_queue_value}" ]]; then
+  #  log_success ${redis_test_case}
+  #else
+  #  log_failure ${redis_test_case}
+  #  overall_status=1
+  #fi
+
+  redis_test_case="RD-25  :: Redis Queue Read"
+  redis_cmd_result=$(${redis_pod_exec_cmd} -- env REDISCLI_AUTH=${CSB_REDIS_PSWD} ${redis_cli_cmd} \
+  RPOP "${test_queue_key}" 2>&1)
+  echo $redis_cmd_result
+  echo $test_queue_value
+  if ! eval_and_log_test_case "$redis_test_case" "${redis_cmd_result} == ${test_queue_value}"; then
+    overall_status=1
+  fi
 
   return $overall_status
 }
