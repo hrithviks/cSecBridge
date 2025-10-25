@@ -50,7 +50,11 @@ spec:
           imagePullPolicy: {{ .Values.statefulset.image.pullPolicy }}
           
           # The CMD points to our custom config file which enforces password and AOF.
-          command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+          command: ["redis-server"]
+          args: 
+            - "/usr/local/etc/redis/redis.conf" # Load the persistence/logging config
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
             
           ports:
             - name: redis
@@ -84,16 +88,6 @@ spec:
             - name: redis-data
               mountPath: /data
             # Mount custom redis.conf file only, into the default config path
-            - name: redis-config
-              mountPath: /usr/local/etc/redis/redis.conf
-              subPath: redis.conf
-              readOnly: true
-      
-      # Define the volume for the custom configuration file (ConfigMap).
-      volumes:
-        - name: redis-config
-          configMap:
-            name: {{ .Chart.Name }}-config
 
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:
