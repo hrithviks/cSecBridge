@@ -31,7 +31,7 @@ from psycopg2 import pool
 from config import config
 from app.errors import ExtentionError
 
-_MODULE_LOG_CONTEXT = {"module": "EXTENSIONS"}
+_MODULE_LOG_CONTEXT = {"app_module": "EXTENSIONS"}
 
 # Setup logger for the extentions module
 log = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ try:
     # Issue ping on the redis client for fail-fast approach
     redis_client.ping()
 except redis.exceptions.ConnectionError as e:
-    log.error(f"Redis connection error: {str(e)}",
+    log.error("Redis connection error.",
               exc_info=True,
               extra=_MODULE_LOG_CONTEXT)
     raise ExtentionError(f"Redis client connection error: {str(e)}") from e
