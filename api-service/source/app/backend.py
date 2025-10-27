@@ -25,7 +25,7 @@ from app.errors import DBError, RedisError
 __all__ = ['create_new_request', 'get_request_by_id', 'DBError', 'RedisError']
 
 # Insert statment for requests table
-_INSERT_TO_REQUESTS = '''INSERT INTO REQUESTS
+_INSERT_TO_REQUESTS = '''INSERT INTO CSB_REQUESTS
     (CLIENT_REQ_ID,
     CORRELATION_ID,
     ACCOUNT_ID,
@@ -34,18 +34,17 @@ _INSERT_TO_REQUESTS = '''INSERT INTO REQUESTS
     ACTION,
     STATUS,
     CLOUD_PROVIDER,
-    REQUESTED_TIME_STAMP,
-    LAST_UPDATED_TIME_STAMP)
+    REQ_TIME_STAMP,
+    LAST_UPD_TIME_STAMP)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
 
 # Insert statement for requests audit table
-_INSERT_TO_REQUESTS_AUDIT = '''INSERT INTO REQUESTS_AUDIT
+_INSERT_TO_REQUESTS_AUDIT = '''INSERT INTO CSB_REQUESTS_AUDIT
     (CORRELATION_ID,
-    ACTION,
     STATUS,
     ERROR_TEXT,
-    PROCESSED_TIME_STAMP)
-    VALUES (%s, %s, %s, %s, %s)'''
+    AUDIT_TIMESTAMP)
+    VALUES (%s, %s, %s, %s)'''
 
 # Select statement to retrieve data from requests table
 _SELECT_FROM_REQUESTS = 'SELECT * FROM REQUESTS WHERE CORRELATION_ID = %s'
@@ -54,8 +53,8 @@ _SELECT_FROM_REQUESTS = 'SELECT * FROM REQUESTS WHERE CORRELATION_ID = %s'
 _RESPONSE_KEYS = ['CLIENT_REQ_ID',
                   'CORRELATION_ID',
                   'STATUS'
-                  'REQUSTED_TIME_STAMP',
-                  'LAST_UPDATED_TIME_STAMP']
+                  'REQ_TIME_STAMP',
+                  'LAST_UPD_TIME_STAMP']
 
 # Redis cache active duration
 _REDIS_CACHE_TTL = 300
@@ -126,7 +125,6 @@ def create_new_request(db_conn, redis_conn, backend_data):
                 _INSERT_TO_REQUESTS_AUDIT,
                 (
                     backend_data['correlation_id'],
-                    backend_data['action'],
                     _INIT_STATUS,
                     None,
                     backend_data['received_at']
