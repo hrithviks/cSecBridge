@@ -20,11 +20,11 @@ Functions:
     create_app: Creates and returns a configured Flask application instance.
 '''
 
-from flask import Flask, g, jsonify
+import json
+from flask import Flask, g
 from config import config
 from .extensions import limiter, db_pool, talisman, cors
-from .backend import BackendServerError
-from .routes import APIServerError
+from .errors import register_error_handlers
 
 
 def create_app():
@@ -32,6 +32,10 @@ def create_app():
 
     app = Flask(__name__)
     app.config.from_object(config)
+
+    # Initialize schema validation config
+    with open('schema.json') as f:
+        app.config['JSON_REQ_SCHEMA'] = json.load(f)
 
     # Initialize extensions with the app instance
     limiter.init_app(app)
@@ -43,27 +47,10 @@ def create_app():
 
     # Register blueprints
     from . import routes
-    app.register_blueprint(routes.api_bp)
+    app.register_blueprint(routes.api_blueprint)
 
     # Global error handler for the routes
-    @app.errorhandler(APIServerError, BackendServerError, Exception)
-    def handle_unexpected_error(e):
-        '''
-        Catches all internal errors during the request processing, and logs to
-        the application's logger.
-
-        This abstracts the underlying operation from the client, and propagates
-        a uniform internal server error.
-        '''
-
-        # Log the exception to stderr
-        app.logger.error(f"Internal Exception: {e}", exc_info=True)
-
-        # Return a generic, safe error response to the client
-        return jsonify({
-            "error": "Internal Server Error",
-            "details": "An unexpected error occurred. Please try again."
-        }), 500
+    register_error_handlers(app)
 
     # Register teardown function to return DB connection to the pool
     @app.teardown_appcontext
