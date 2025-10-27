@@ -177,8 +177,7 @@ def create_request():
     client_context = {**_CLIENT_CONTEXT, **{'correlation_id': correlation_id}}
     server_context = {**_SYSTEM_CONTEXT, **{'correlation_id': correlation_id}}
     current_app.logger.info(
-        f'API Request received. Path: {request.path}. \
-        Method: {request.method}.',
+        f'Request received. Path: {request.path}. Method: {request.method}.',
         extra=client_context)
 
     # Load and parse the payload
@@ -186,13 +185,17 @@ def create_request():
     if not data:
         current_app.logger.info('Invalid JSON data in the request.',
                                 extra=client_context)
-        raise ValidationError('Invalid JSON data')
+        raise ValidationError('Invalid JSON data in the request')
+
     try:
         validate(instance=data, schema=current_app.config['JSON_REQ_SCHEMA'])
-    except ValidationError as e:
-        current_app.logger.info(f'Json schema validation failed. Error: {e}',
+    except ValidationError:
+        current_app.logger.info('JSON schema validation failed.',
                                 extra=client_context)
         raise
+    else:
+        current_app.logger.info('JSON schema validation successful.',
+                                extra=client_context)
 
     # Create the payload for backend processing
     backend_data = _get_backend_data(data, correlation_id)
