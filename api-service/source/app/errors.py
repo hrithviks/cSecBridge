@@ -67,12 +67,13 @@ def _handle_api_server_exception(e):
 def _handle_json_schema_error(e):
     """Handler for JSON Schema validation errors."""
 
+    err_msg = str(e).split('\n')[0]
     response = {
         "error": "JSON Data Error",
-        "details": str(e),
+        "details": f"{err_msg}. Please refer to \
+https://csecbridge.in/schema/ for more details",
     }
-    current_app.logger.error(f"JSON Schema Validation Exception caught. \
-                             {str(e)}")
+    current_app.logger.info(f"Posting validation error to client. {err_msg}")
     return jsonify(response), 400
 
 
