@@ -55,10 +55,10 @@ except ConfigLoadError:
 
 # All other exceptions
 except Exception as err:
-    log.critical("Exception during application startup.",
+    log.critical("Exception during application startup. Please refer to trace \
+                 back for more details",
                  exc_info=False,
                  extra=_STARTUP_CONTEXT)
-    raise err
     sys.exit(1)
 
 if __name__ == '__main__':
