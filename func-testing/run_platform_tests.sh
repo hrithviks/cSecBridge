@@ -47,6 +47,12 @@ run_test() {
 # Setup function
 setup_environment() {
   log_info "Setting up qa test environment..."
+  if ! kubectl get nodes > /dev/null 2>&1; then
+    log_info "${RED}Failed to connect to Kubernetes cluster. Aborting.${RESET}"
+    exit 1
+  fi
+  log_info "Connected to Kubernetes cluster. Applying platform configuration..."
+
   if ! kubectl apply -k "$PLATFORM_OVERLAY_PATH" >/dev/null 2>&1; then
     log_info "${RED}Failed to apply platform configuration. Aborting.${RESET}"
     exit 1
