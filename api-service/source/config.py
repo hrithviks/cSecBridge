@@ -132,6 +132,7 @@ class _Config:
             "POSTGRES_DB",
             "REDIS_HOST",
             "REDIS_PORT",
+            "REDIS_PASSWORD",
             "POSTGRES_MAX_CONN",
             "ALLOWED_ORIGIN"
         ]
