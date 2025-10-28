@@ -46,8 +46,15 @@ def _handle_http_exception(e):
         "error": e.name,
         "details": e.description,
     }
-    current_app.logger.info(f"HTTP Exception caught: \
-                            {e.code} {e.name} - {request.path}")
+    current_app.logger.info(
+        'Client HTTP exception caught',
+        extra={
+            "error_code": e.code,
+            "error_name": e.name,
+            "request_path": request.path,
+            "context": "CLIENT-API"
+        }
+    )
     return jsonify(response), e.code
 
 
@@ -59,7 +66,14 @@ def _handle_api_server_exception(e):
     response = {
         "error": "Internal Server Error. Please try again."
     }
-    current_app.logger.error(f"APIServer Exception caught - {str(e)}")
+    current_app.logger.error(
+        'Custom APIServer exception caught',
+        extra={
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "context": "SERVER-API"
+        }
+    )
     return jsonify(response), 503
 
 
@@ -73,7 +87,16 @@ def _handle_json_schema_error(e):
         "details": f"{err_msg}. Please refer to \
 https://csecbridge.in/schema/ for more details",
     }
-    current_app.logger.info(f"Posting validation error to client. {err_msg}")
+    current_app.logger.info(
+        'JSON validation error sent to client.',
+        extra={
+            "error_type": "JSONSchemaError",
+            "error_message": err_msg,
+            "context": "CLIENT-API",
+            "request_path": request.path,
+            "request_method": request.method
+        }
+    )
     return jsonify(response), 400
 
 
@@ -85,7 +108,14 @@ def _handle_all_exceptions(e):
         "error": "Internal Server Error",
         "details": "An unexpected error occurred. Please try again."
     }
-    current_app.logger.error(f"Unhandled Exception caught: {e}", exc_info=True)
+    current_app.logger.error(
+        'Unhandled system exception caught',
+        extra={
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "context": "SERVER-API"
+        }
+    )
     return jsonify(response), 500
 
 

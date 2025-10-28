@@ -38,12 +38,25 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
 # Define the public APIs of this module
-__all__ = ['limiter',
-           'talisman',
-           'cors',
-           'db_pool',
-           'redis_client',
-           'ExtentionError']
+__all__ = [
+    'limiter',
+    'talisman',
+    'cors',
+    'db_pool',
+    'redis_client',
+    'ExtentionError'
+]
+
+
+# Log context setter function
+def _set_log_err_context(excp):
+
+    return {
+        "error_type": type(excp).__name__,
+        "error_message": str(excp),
+        "app_module": "EXTENSIONS"
+    }
+
 
 #######################################
 # Rate setter extention for Flask app #
@@ -63,11 +76,12 @@ try:
         strategy="fixed-window",
     )
 except redis.exceptions.ConnectionError as e:
-    log.error(f"Redis connection error for Flask Limiter: {str(e)}",
-              exc_info=True,
-              extra=_MODULE_LOG_CONTEXT)
-    raise ExtentionError(f"Redis connection error for Flask Limiter: \
-                         {str(e)}") from e
+    log.error(
+        "Connection error for rate limiter Redis.",
+        exc_info=True,
+        extra=_set_log_err_context(e)
+    )
+    raise ExtentionError
 
 ######################################
 # Security extenstions for Flask app #
@@ -96,10 +110,12 @@ try:
                 **_db_conn_params
             )
 except ConnectionError as e:
-    log.error(f"Database connection error: {str(e)}",
-              exc_info=True,
-              extra=_MODULE_LOG_CONTEXT)
-    raise ExtentionError(f"Database connection error: {str(e)}") from e
+    log.error(
+        "Connection error for PostgreSQL pool.",
+        exc_info=True,
+        extra=_set_log_err_context(e)
+    )
+    raise ExtentionError
 
 ##############################
 # Redis client for Flask app #
@@ -120,7 +136,9 @@ try:
     # Issue ping on the redis client for fail-fast approach
     redis_client.ping()
 except redis.exceptions.ConnectionError as e:
-    log.error("Redis connection error.",
-              exc_info=True,
-              extra=_MODULE_LOG_CONTEXT)
-    raise ExtentionError(f"Redis client connection error: {str(e)}") from e
+    log.error(
+        "Connection error for Redis client.",
+        exc_info=True,
+        extra=_set_log_err_context(e)
+    )
+    raise ExtentionError

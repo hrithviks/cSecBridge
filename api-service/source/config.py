@@ -33,7 +33,9 @@ __all__ = ['ConfigLoadError', 'initialize_config']
 
 
 class ConfigLoadError(Exception):
-    """Custom exception for all fatal errors during configuration load."""
+    """
+    Custom exception for all fatal errors during configuration load.
+    """
     pass
 
 
@@ -153,8 +155,8 @@ class _Config:
 
         # Exit if required variables are missing
         if missing_vars:
-            error_message = f'FATAL ERROR: Missing required \
-                environment variables: {', '.join(missing_vars)}'
+            error_message = f'Fatal error: Missing required environment \
+                variables {', '.join(missing_vars)}'
             raise ConfigLoadError(error_message)
 
         # Load validated config into private attributes
@@ -175,8 +177,8 @@ class _Config:
             self._ALLOWED_ORIGIN = os.getenv('ALLOWED_ORIGIN')
         except (ValueError, TypeError) as e:
             # Catch errors from int() if a variable is not a valid number
-            error_message = f'FATAL ERROR: Malformed environment variable. \
-                  Ensure ports and max connections are integers. Details: {e}'
+            error_message = 'Fatal error: Malformed numeric \
+                environment variable.'
             raise ConfigLoadError(error_message) from e
 
 

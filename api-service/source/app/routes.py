@@ -12,6 +12,10 @@ endpoints. It acts as the primary interface for application, responsible for:
 API will provide data related response only.
 Custom error class will return internal errors during the excecution back to
 application factory.
+
+All valid requests (based on standard authentication and validation) will be
+accepted, and there's no check for duplicates. Worker process will invalidate
+duplicate requests and update the status accordingly on the database.
 """
 
 import uuid
@@ -38,7 +42,7 @@ def _build_error_response(status_code, error_message, trace_back=None):
     """Internal function to generate an error response to client."""
 
     error_response = jsonify({"error": error_message,
-                              "trace_back": trace_back})
+                              "details": trace_back})
     return error_response, status_code
 
 
@@ -95,7 +99,15 @@ def _token_required(func):
 
         token = request.headers.get('X-Auth-Token')
         if not token or token != current_app.config['API_AUTH_TOKEN']:
-            return jsonify({"error": "Unauthorized"}), 401
+            current_app.logger.warning(
+                'Request unauthorized: API token check failed.',
+                extra=_SYSTEM_CONTEXT
+            )
+            return jsonify({
+                "error": "Request unauthorized",
+                "details": "Invalid API Token in the request"
+                }
+            ), 401
         return func(*args, **kwargs)
     return decorated
 
@@ -107,8 +119,11 @@ def _token_required(func):
 def health_check_probe():
     """Health Check Probe - Used by Kubernetes for liveness probe."""
 
-    current_app.logger.debug('Health check probe received.',
-                             extra=_SYSTEM_CONTEXT)
+    current_app.logger.debug(
+        'Health check probe received.',
+        extra=_SYSTEM_CONTEXT
+    )
+
     return _build_api_response(200, {"status": "ok"})
 
 
@@ -129,12 +144,11 @@ def app_readiness_probe():
         db_conn = _get_db_connection()
         if not db_conn:
             current_app.logger.error(
-                'Failed to obtain database connection from pool. App is \
-                not ready to serve requests.',
+                'Failed to obtain database connection from pool',
                 extra=_SYSTEM_CONTEXT,
                 exc_info=False
             )
-            raise Exception("Failed to get DB connection from pool.")
+            raise Exception('Backend service unavailable.')
 
         # Check Redis connectivity by sending a PING command
         redis_conn = _get_redis_connection()
@@ -148,17 +162,20 @@ def app_readiness_probe():
     # Catch all exceptions
     except Exception as e:
         # Log the specific error details for debugging
-        current_app.logger.error(f"Readiness probe failed: {e.__qualname__}",
-                                 exc_info=False)
-        current_app.logger.error(f"Exception details: {str(e)}",
-                                 exc_info=False)
+        current_app.logger.error(
+            'App readiness check failed.',
+            extra={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                **_SYSTEM_CONTEXT
+            }
+        )
 
         # Return a 503 error to signal Kubernetes that the pod is not ready
         return _build_error_response(
-            400,
+            503,
             'Service Error',
-            f'A backend service is currently unavailable. \
-            Error details: {str(e)}'
+            'A backend service is currently unavailable.'
         )
 
 
@@ -174,58 +191,78 @@ def create_request():
 
     # Create a unique corelation id and set it to the logger context
     correlation_id = str(uuid.uuid4())
-    client_context = {**_CLIENT_CONTEXT, **{'correlation_id': correlation_id}}
-    server_context = {**_SYSTEM_CONTEXT, **{'correlation_id': correlation_id}}
+    client_context = {**{'correlation_id': correlation_id}, **_CLIENT_CONTEXT}
+    server_context = {**{'correlation_id': correlation_id}, **_SYSTEM_CONTEXT}
     current_app.logger.info(
-        f'Request received. Path: {request.path}. Method: {request.method}.',
-        extra=client_context)
+        'Client request received',
+        extra={
+            "request_path": request.path,
+            "request_method": request.method,
+            **client_context
+        }
+    )
 
     # Load and parse the payload
     data = request.get_json(silent=True)
     if not data:
-        current_app.logger.info('Invalid JSON data in the request.',
-                                extra=client_context)
-        raise ValidationError('Invalid JSON data in the request')
+        current_app.logger.info(
+            'Invalid JSON data or Content-Type header missing.',
+            extra=client_context
+        )
+        raise ValidationError
 
     try:
-        validate(instance=data, schema=current_app.config['JSON_REQ_SCHEMA'])
+        validate(
+            instance=data,
+            schema=current_app.config['JSON_REQ_SCHEMA']
+        )
     except ValidationError:
-        current_app.logger.info('JSON schema validation failed.',
-                                extra=client_context)
+        current_app.logger.info(
+            'JSON schema validation failed.',
+            extra=client_context
+        )
         raise
     else:
-        current_app.logger.info('JSON schema validation successful.',
-                                extra=client_context)
+        current_app.logger.debug(
+            'JSON schema validation successful.',
+            extra=client_context
+        )
 
     # Create the payload for backend processing
     backend_data = _get_backend_data(data, correlation_id)
 
     try:
-        current_app.logger.info('Getting database connection from the pool.',
-                                extra=client_context)
+        current_app.logger.debug(
+            'Backend connection request from pool started.',
+            extra=client_context
+        )
         db_conn = _get_db_connection()
         redis_conn = _get_redis_connection()
 
         # Call the backend function to log the request.
-        current_app.logger.info('Initiating backend data processing.',
-                                extra=client_context)
-        create_new_request(db_conn, redis_conn, backend_data)
+        current_app.logger.debug(
+            'Backend processing initiated.',
+            extra=client_context
+        )
+        create_new_request(
+            db_conn,
+            redis_conn,
+            backend_data
+        )
         db_conn.commit()
-        current_app.logger.info('Backend data processing successful.',
-                                extra=client_context)
-    except (DBError, RedisError) as e:
-        current_app.logger.error(f'Service communication error: {e}',
-                                 extra=server_context,
-                                 exc_info=True)
+        current_app.logger.debug(
+            'Request processed and accepted.',
+            extra=client_context
+        )
+    except (DBError, RedisError):
         if 'redis_conn' in locals() and db_conn:
             db_conn.rollback()
             current_app.logger.warning(
-                'Rollback executed for the request.',
-                extra=server_context,
-                exc_info=True
+                'Backend communication failed. Transaction rolled back.',
+                extra=server_context
             )
-        raise APIServerError(f'Backend service communication failed. \
-            Error details: {str(e)}')
+        raise APIServerError(f'Backend service communication failed \
+            for {correlation_id}')
 
     return _build_api_response(202, _get_response_data(backend_data))
 
@@ -239,34 +276,42 @@ def create_request():
 @limiter.limit("200 per minute")
 def get_request_status(correlation_id):
     """API Get Method - Retrieves the status of a specific access request."""
+
     client_context = {**_CLIENT_CONTEXT, **{'correlation_id': correlation_id}}
-    server_context = {**_SYSTEM_CONTEXT, **{'correlation_id': correlation_id}}
-    current_app.logger.info(f'API Request received. Path: {request.path}. \
-                            Method: {request.method}.',
-                            extra=client_context)
+    current_app.logger.debug(
+        'Client request received',
+        extra={
+            "request_path": request.path,
+            "request_method": request.method,
+            **client_context
+        }
+    )
 
     try:
-        current_app.logger.info('Getting database connection from the pool.',
-                                extra=client_context)
+        current_app.logger.info(
+            'Backend connection request from pool started.',
+            extra=client_context
+        )
         conn = _get_db_connection()
         redis_conn = _get_redis_connection()
-        current_app.logger.info('Initiating backend data querying.',
-                                extra=client_context)
+        current_app.logger.debug(
+            'Backend data query initiated.',
+            extra=client_context
+        )
 
         # Call the backend function to get the data
-        request_status = get_request_by_id(conn,
-                                           redis_conn,
-                                           correlation_id)
-        current_app.logger.info('Backend data querying successful.',
-                                extra=client_context)
-    except (DBError, RedisError) as e:
-        current_app.logger.warning(
-            f'Service communication error: {e}',
-            extra=server_context,
-            exc_info=True
+        request_status = get_request_by_id(
+            conn,
+            redis_conn,
+            correlation_id
         )
-        raise APIServerError(f'Backend service communication failed for '
-                             f'{correlation_id}. Error details: {str(e)}')
+        current_app.logger.debug(
+            'Backend data query successful.',
+            extra=client_context
+        )
+    except (DBError, RedisError):
+        raise APIServerError(f'Backend service communication failed \
+            for {correlation_id}')
 
     if not request_status:
         return _build_error_response(
