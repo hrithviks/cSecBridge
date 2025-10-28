@@ -5,7 +5,7 @@
 # *** SERVICE ACCOUNT ***
 serviceAccount:
   # Service account will be created using CI-CD pipeline
-  name: "csecbridge-deployer"
+  name: "csb-app-sa"
 
 # *** DEPLOYMENTS ***
 # Values that configure the api-service Deployment resource.
@@ -13,10 +13,11 @@ deployment:
   replicaCount: 1
   image:
     # If no values passed during the Helm installation, always use the latest image.
-    name: "csecbridge-api-service:latest"
-    pullPolicy: IfNotPresent
+    uri: "ghcr.io/hrithviks/csb-api-qa"
+    pullPolicy: Always
     # The image tag. If not set, it defaults to the chart's appVersion.
-    tag: ""
+    tag: "latest"
+
   # Resource requests and limits for the container.
   resources:
     requests:
@@ -25,6 +26,22 @@ deployment:
     limits:
       cpu: 250m
       memory: 256Mi
+
+  # Health probes for the container.
+  probes:
+    liveness:
+      initialDelaySeconds: 45
+      periodSeconds: 60
+      timeoutSeconds: 5
+    readiness:
+      initialDelaySeconds: 50
+      periodSeconds: 15
+      timeoutSeconds: 5
+
+# *** CONTAINER IMAGE PULL SECRETS ***
+# Image pull secrets
+imagePullSecrets:
+  - name: csb-gh-secret
 
 # *** SERVICE ***
 # Values for the Kubernetes Service that exposes the application internally.
@@ -60,18 +77,22 @@ autoscaling:
 
 # *** CONFIG MAP ***
 # Non-sensitive configuration passed to the application as environment variables.
+# Use --set option to override the defined default values.
 config:
+  # API service configuration
   cacheTtlSeconds: 300
-  postgresMaxConn: 5
-  allowedOrigin: "http://localhost:3000"
+  postgresMaxConn: 10
+  allowedOrigin: "localhost"
+
   # Connection details for backend services
   postgresHost: "postgres-service"
   postgresPort: 5432
-  postgresUser: "csecbridge_user"
-  postgresDb: "csecbridge_db"
+  postgresUser: "csb_api_user"
+  postgresDb: "csb_app_db"
   redisHost: "redis-service"
   redisPort: 6379
-  # SSL/TLS settings
+
+  # SSL/TLS setting
   postgresSslEnabled: false
   redisSslEnabled: false
 
@@ -79,25 +100,21 @@ config:
 # Configuration for sensitive data.
 # NOTE: This is only a placeholder. Actual secrets will be created by the CI/CD pipeline.
 secrets:
+  enabled: false
   apiToken:
-    create: false
-    name: api-service-secret
-    value: "shhhh-api-secret"
-
+    name: csb-api-token-secret
+    key: csb-api-token
   postgres:
-    create: false
-    name: postgres-secret
-    value: "shhhh-postgres-password"
-
+    name: csb-postgres-api-user-secret
+    key: csb-api-user-pswd
   redis:
-    create: false
-    name: redis-secret
-    value: "shhhh-redis-password"
+    name: csb-redis-user-secret
+    key: csb-api-redis-pswd
 
 # *** NETWORK POLICY ***
 # Configures the NetworkPolicy resource to firewall the application pods.
 networkPolicy:
-  enabled: true
+  enabled: false
 
   # Egress rules define the outbound connections allowed FROM the api-service.
   egress:
