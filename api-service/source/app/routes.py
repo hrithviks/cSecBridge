@@ -121,7 +121,7 @@ def health_check_probe():
     Used by Kubernetes for liveness probe."""
 
     current_app.logger.debug(
-        'Health check probe received.',
+        'Health check probe confirmed.',
         extra=_SYSTEM_CONTEXT
     )
 
@@ -136,7 +136,7 @@ def app_readiness_probe():
     """Readiness probe:
     Used by Kubernetes for readiness probe"""
 
-    current_app.logger.info(
+    current_app.logger.debug(
         'App readiness probe received.',
         extra=_SYSTEM_CONTEXT
     )
@@ -173,7 +173,7 @@ def app_readiness_probe():
             'Service Error',
             'A backend service is currently unavailable.'
         )
-    current_app.logger.info(
+    current_app.logger.debug(
             'App readiness confirmed.',
             extra=_SYSTEM_CONTEXT
         )
