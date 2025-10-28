@@ -206,7 +206,7 @@ def create_request():
     # Load and parse the payload
     data = request.get_json(silent=True)
     if not data:
-        current_app.logger.info(
+        current_app.logger.warning(
             'Invalid JSON data or Content-Type header missing.',
             extra=client_context
         )
@@ -218,7 +218,7 @@ def create_request():
             schema=current_app.config['JSON_REQ_SCHEMA']
         )
     except ValidationError:
-        current_app.logger.info(
+        current_app.logger.warning(
             'JSON schema validation failed.',
             extra=client_context
         )
@@ -290,7 +290,7 @@ def get_request_status(correlation_id):
     )
 
     try:
-        current_app.logger.info(
+        current_app.logger.debug(
             'Backend connection request from pool started.',
             extra=client_context
         )
