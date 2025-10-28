@@ -1,5 +1,5 @@
 apiVersion: v2
-name: api-service
+name: csb-api-service
 description: A Helm chart for the CSecBridge API Service
 type: application
 version: 1.0.0
