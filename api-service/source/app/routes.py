@@ -117,7 +117,8 @@ def _token_required(func):
 ######################
 @api_blueprint.route('/health', methods=['GET'])
 def health_check_probe():
-    """Health Check Probe - Used by Kubernetes for liveness probe."""
+    """Health Check Probe:
+    Used by Kubernetes for liveness probe."""
 
     current_app.logger.debug(
         'Health check probe received.',
@@ -133,7 +134,7 @@ def health_check_probe():
 @api_blueprint.route('/ready', methods=['GET'])
 def app_readiness_probe():
     """Readiness probe:
-    Used by Kubernetes to check if app is ready to accept traffic."""
+    Used by Kubernetes for readiness probe"""
 
     current_app.logger.info(
         'App readiness probe received.',
@@ -153,11 +154,6 @@ def app_readiness_probe():
         # Check Redis connectivity by sending a PING command
         redis_conn = _get_redis_connection()
         redis_conn.ping()
-        current_app.logger.info(
-            'App readiness confirmed.',
-            extra=_SYSTEM_CONTEXT
-        )
-        return _build_api_response(200, {"status": "ready"})
 
     # Catch all exceptions
     except Exception as e:
@@ -177,6 +173,11 @@ def app_readiness_probe():
             'Service Error',
             'A backend service is currently unavailable.'
         )
+    current_app.logger.info(
+            'App readiness confirmed.',
+            extra=_SYSTEM_CONTEXT
+        )
+    return _build_api_response(200, {"status": "ready"})
 
 
 ########################
@@ -186,7 +187,7 @@ def app_readiness_probe():
 @_token_required
 @limiter.limit("100 per minute")
 def create_request():
-    """API POST Method
+    """API POST Method:
     Accepts, validates, and queues a new access request. """
 
     # Create a unique corelation id and set it to the logger context
@@ -275,7 +276,8 @@ def create_request():
 @_token_required
 @limiter.limit("200 per minute")
 def get_request_status(correlation_id):
-    """API Get Method - Retrieves the status of a specific access request."""
+    """API Get Method:
+    Retrieves the status of a specific access request."""
 
     client_context = {**_CLIENT_CONTEXT, **{'correlation_id': correlation_id}}
     current_app.logger.debug(
