@@ -71,7 +71,7 @@ networkPolicy:
       # This selects pods with the labels of the api-service chart.
       # Must match the labels set in the api-service chart.
       podSelector:
-        app.kubernetes.io/name: csb-api
+        app.kubernetes.io/name: csb-api-service
 
 # Optional external exposure (if needed)
 ingress:
