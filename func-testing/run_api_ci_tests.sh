@@ -29,8 +29,8 @@ CSB_ROLE_NAME="csb-app-deployer-role"
 CSB_API_SERVICE_PATH="../api-service"
 CSB_API_HELM_CHART_PATH="${CSB_API_SERVICE_PATH}/helm"
 CSB_API_RELEASE_NAME="csb-api-rel"
-CSB_DB_SERVICE="postgres-service"
-CSB_REDIS_SERVICE="redis-service"
+CSB_DB_SERVICE="csb-postgres-service"
+CSB_REDIS_SERVICE="csb-redis-service"
 
 # Environment setup function
 validate_environment() {
