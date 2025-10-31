@@ -30,7 +30,7 @@ csecbridge/
 ├── api-service/
 │   ├── Dockerfile
 │   ├── helm/
-│   ├── source/
+│   ├── src/
 │   ├── sql/
 │   └── unit_test/
 ├── frontend-service/

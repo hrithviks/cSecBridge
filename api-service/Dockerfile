@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /usr/src/app
 
 # Install dependencies for the builder stage
-COPY source/requirements.txt .
+COPY src/requirements.txt .
 RUN pip wheel --no-cache-dir --wheel-dir /usr/src/app/wheels -r requirements.txt
 
 # Stage 2 - Application
