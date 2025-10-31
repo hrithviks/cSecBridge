@@ -13,7 +13,7 @@
 * 
 */ ----------------------------------------------------------------------------
 
-create type status_enum as enum ('pending', 'success', 'failed', 'rollback', 'queued');
+create type status_enum as enum ('pending', 'success', 'failed', 'rollback', 'queued', 'in-progress');
 
 create table csb_app.csb_requests (
     correlation_id uuid primary key,
