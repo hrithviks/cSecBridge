@@ -114,16 +114,16 @@ run_ci_tests() {
 
   # CI-01: Test lint success
   log_info "Section 1: Linting Tests..."
-  if ! run_test "CI-01  : Python Linting" "success" "flake8 ${CSB_API_SERVICE_PATH}/source/"; then
+  if ! run_test "CI-01  : Python Linting" "success" "flake8 ${CSB_API_SERVICE_PATH}/src/"; then
     overall_status=1
   fi
   
   # CI-02: Test lint failure - by introducing an unused import
-  echo "import os" >> "${CSB_API_SERVICE_PATH}/source/logging_config.py"
+  echo "import os" >> "${CSB_API_SERVICE_PATH}/src/logging_config.py"
   if ! run_test "CI-02  : Python Linting (Failure)" "failure" "flake8 ${CSB_API_SERVICE_PATH}/source/"; then
     overall_status=1
   fi
-  git restore "${CSB_API_SERVICE_PATH}/source/logging_config.py" # Clean up
+  git restore "${CSB_API_SERVICE_PATH}/src/logging_config.py" # Clean up
 
   ###############################
   # Section 2: Containerization #
