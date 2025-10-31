@@ -98,6 +98,10 @@ class _Config:
     @property
     def REDIS_PORT(self):
         return self._REDIS_PORT
+    
+    @property
+    def REDIS_USER(self):
+        return self._REDIS_USER
 
     @property
     def REDIS_PASSWORD(self):
@@ -134,6 +138,7 @@ class _Config:
             "POSTGRES_DB",
             "REDIS_HOST",
             "REDIS_PORT",
+            "REDIS_USER",
             "REDIS_PASSWORD",
             "POSTGRES_MAX_CONN",
             "ALLOWED_ORIGIN"
@@ -172,6 +177,7 @@ class _Config:
             self._POSTGRES_SSL_CA_CERT = os.getenv('POSTGRES_SSL_CA_CERT')
             self._REDIS_HOST = os.getenv('REDIS_HOST')
             self._REDIS_PORT = int(os.getenv('REDIS_PORT'))
+            self._REDIS_USER = os.getenv('REDIS_USER')
             self._REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
             self._REDIS_SSL_CA_CERT = os.getenv('REDIS_SSL_CA_CERT')
             self._ALLOWED_ORIGIN = os.getenv('ALLOWED_ORIGIN')

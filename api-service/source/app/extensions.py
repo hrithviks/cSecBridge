@@ -123,6 +123,7 @@ except ConnectionError as e:
 _redis_conn_params = {
     "host": config.REDIS_HOST,
     "port": config.REDIS_PORT,
+    "username": config.REDIS_USER,
     "password": config.REDIS_PASSWORD,
     "db": 0,
     "decode_responses": True

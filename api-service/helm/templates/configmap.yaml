@@ -22,6 +22,7 @@ data:
   POSTGRES_DB: {{ .Values.config.postgresDb | quote }}
   REDIS_HOST: {{ .Values.config.redisHost | quote }}
   REDIS_PORT: {{ .Values.config.redisPort | quote }}
+  REDIS_USER: {{ .Values.config.redisUser | quote }}
 
   # Optional - SSL/TLS Config
   # POSTGRES_SSL_ENABLED: {{ .Values.config.postgresSslEnabled | quote }}
