@@ -1,0 +1,8 @@
+# 1. API Service Client
+ACL SETUSER csb-api-client on >api-user-pswd-placeholder +@all -@admin ~cache:general:* ~queue:*
+
+# 2. AWS Worker (Consumes jobs and writes AWS cache)
+ACL SETUSER csb-aws-worker on >aws-user-pswd-placeholder ~queue:aws ~cache:aws:* +lpush +rpop +get +set -@all
+
+# 3. Azure Worker (Consumes jobs and writes Azure cache)
+ACL SETUSER csb-azure-worker  on >azure-user-pswd-placeholder ~queue:azure ~cache:azure:* +lpush +rpop +get +set -@all
