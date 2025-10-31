@@ -85,12 +85,13 @@ config:
   allowedOrigin: "localhost"
 
   # Connection details for backend services
-  postgresHost: "postgres-service"
+  postgresHost: "csb-postgres-service"
   postgresPort: 5432
   postgresUser: "csb_api_user"
   postgresDb: "csb_app_db"
-  redisHost: "redis-service"
+  redisHost: "csb-redis-service"
   redisPort: 6379
+  redisUser: "csb_api_client"
 
   # SSL/TLS setting
   postgresSslEnabled: false
