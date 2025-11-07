@@ -1,0 +1,133 @@
+# Default values for the api-service Helm chart.
+# This file is structured to group values by the Kubernetes resource they
+# primarily configure.
+
+# *** SERVICE ACCOUNT ***
+serviceAccount:
+  # Service account will be created using CI-CD pipeline
+  name: "csb-app-sa"
+
+# *** DEPLOYMENTS ***
+# Values that configure the api-service Deployment resource.
+deployment:
+  replicaCount: 1
+  image:
+    # If no values passed during the Helm installation, always use the latest image.
+    uri: "ghcr.io/hrithviks/csb-api-qa"
+    pullPolicy: Always
+    # The image tag. If not set, it defaults to the chart's appVersion.
+    tag: "latest"
+
+  # Resource requests and limits for the container.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+  # Health probes for the container.
+  probes:
+    liveness:
+      initialDelaySeconds: 45
+      periodSeconds: 60
+      timeoutSeconds: 5
+    readiness:
+      initialDelaySeconds: 50
+      periodSeconds: 15
+      timeoutSeconds: 5
+
+# *** CONTAINER IMAGE PULL SECRETS ***
+# Image pull secrets
+imagePullSecrets:
+  - name: csb-gh-secret
+
+# *** SERVICE ***
+# Values for the Kubernetes Service that exposes the application internally.
+service:
+  type: ClusterIP
+  # The port the service exposes.
+  # NOTE: This value is also used by the Deployment's containerPort and probes.
+  port: 8000
+
+# *** INGRESS ***
+# Values for the Ingress resource, which exposes the service externally.
+ingress:
+  enabled: false
+  # Default hosts configuration.
+  hosts:
+    - host: csecbridge-api.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  # Default annotations for an NGINX Ingress controller.
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+# *** AUTO SCALING ***
+# Configuration for the HorizontalPodAutoscaler (HPA).
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# *** CONFIG MAP ***
+# Non-sensitive configuration passed to the application as environment variables.
+# Use --set option to override the defined default values.
+config:
+  # API service configuration
+  cacheTtlSeconds: 300
+  postgresMaxConn: 10
+  allowedOrigin: "localhost"
+
+  # Connection details for backend services
+  postgresHost: "csb-postgres-service"
+  postgresPort: 5432
+  postgresUser: "csb_api_user"
+  postgresDb: "csb_app_db"
+  redisHost: "csb-redis-service"
+  redisPort: 6379
+  redisUser: "csb_api_client"
+
+  # SSL/TLS setting
+  postgresSslEnabled: false
+  redisSslEnabled: false
+
+# *** SECRETS ***
+# Configuration for sensitive data.
+# NOTE: This is only a placeholder. Actual secrets will be created by the CI/CD pipeline.
+secrets:
+  enabled: false
+  apiToken:
+    name: csb-api-token-secret
+    key: csb-api-token
+  postgres:
+    name: csb-postgres-api-user-secret
+    key: csb-api-user-pswd
+  redis:
+    name: csb-redis-user-secret
+    key: csb-api-redis-pswd
+
+# *** NETWORK POLICY ***
+# Configures the NetworkPolicy resource to firewall the application pods.
+networkPolicy:
+  enabled: false
+
+  # Egress rules define the outbound connections allowed FROM the api-service.
+  egress:
+    # Selector for the PostgreSQL pods.
+    postgres:
+      podSelector:
+        app.kubernetes.io/name: postgresql
+    # Selector for the Redis pods.
+    redis:
+      podSelector:
+        app.kubernetes.io/name: redis
+    # Selector for the Kubernetes DNS service (CoreDNS).
+    dns:
+      podSelector:
+        k8s-app: kube-dns

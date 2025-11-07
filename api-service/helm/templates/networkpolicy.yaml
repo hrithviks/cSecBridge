@@ -1,0 +1,64 @@
+{{- if .Values.networkPolicy.enabled -}}
+# ---------------------------------------
+# Network Policy Template for API-Service
+# ---------------------------------------
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  # Apply this policy to all pods created by our api-service deployment.
+  podSelector:
+    matchLabels:
+      {{- include "api-service.selectorLabels" . | nindent 6 }}
+
+  # Define both ingress and egress rule types.
+  policyTypes:
+  - Ingress
+  - Egress
+
+  # Ingress Rules
+  ingress:
+  # 1. Allow traffic from any pod in any namespace that is selected by an Ingress controller.
+  - from:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.service.port }}
+
+  # Egress Rules
+  egress:
+  # 1. Allow connections TO the PostgreSQL service.
+  - to:
+    - podSelector:
+        matchLabels:
+          {{- toYaml .Values.networkPolicy.egress.postgres.podSelector | nindent 10 }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.config.postgresPort }}
+
+  # 2. Allow connections TO the Redis service.
+  - to:
+    - podSelector:
+        matchLabels:
+          {{- toYaml .Values.networkPolicy.egress.redis.podSelector | nindent 10 }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.config.redisPort }}
+
+  # 3. Allow connections to the Kubernetes DNS service.
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          {{- toYaml .Values.networkPolicy.egress.dns.podSelector | nindent 10 }}
+    ports:
+    - protocol: UDP
+      port: 53
+{{- end -}}

@@ -1,0 +1,29 @@
+# ----------------------------------
+# ConfigMap Template for API Service
+# ----------------------------------
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  # Application Config
+  # CACHE_TTL_SECONDS: {{ .Values.config.cacheTtlSeconds | quote }}
+  POSTGRES_MAX_CONN: {{ .Values.config.postgresMaxConn | quote }}
+  ALLOWED_ORIGIN: {{ .Values.config.allowedOrigin | quote }}
+
+  # Backend Connection Config
+  POSTGRES_HOST: {{ .Values.config.postgresHost | quote }}
+  POSTGRES_PORT: {{ .Values.config.postgresPort | quote }}
+  POSTGRES_USER: {{ .Values.config.postgresUser | quote }}
+  POSTGRES_DB: {{ .Values.config.postgresDb | quote }}
+  REDIS_HOST: {{ .Values.config.redisHost | quote }}
+  REDIS_PORT: {{ .Values.config.redisPort | quote }}
+  REDIS_USER: {{ .Values.config.redisUser | quote }}
+
+  # Optional - SSL/TLS Config
+  # POSTGRES_SSL_ENABLED: {{ .Values.config.postgresSslEnabled | quote }}
+  # REDIS_SSL_ENABLED: {{ .Values.config.redisSslEnabled | quote }}
