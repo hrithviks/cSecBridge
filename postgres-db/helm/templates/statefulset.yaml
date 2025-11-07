@@ -1,0 +1,130 @@
+# --------------------------------------------
+# Statefulset Template for the Helm Chart
+#
+# - Creates the core POD for postgres service
+# - Attaches the persistent volume for db data
+# --------------------------------------------
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+
+# Statefulset Spec
+spec:
+  replicas: {{ .Values.statefulset.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+
+  # The serviceName is crucial for a StatefulSet to provide a stable DNS entry for each pod.
+  serviceName: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+
+    # Pod Spec
+    spec:
+
+      # Service Account Details for the POD
+      {{- if .Values.serviceAccount.enabled }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+
+      # Use the docker-registry secret
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+
+      # Container configuration for the POD
+      containers:
+        - name: postgres
+          image: {{ .Values.statefulset.image.uri }}
+          imagePullPolicy: {{ .Values.statefulset.image.pullPolicy }}
+
+          # For postgres HBA config
+          command:
+            - "docker-entrypoint.sh"
+            - "-c"
+            - "hba_file=/etc/postgres-config/pg_hba.conf"
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+
+          # Readiness Probe 
+          readinessProbe:
+            exec:
+              command:
+                - "pg_isready"
+                - "-U"
+                - {{ .Values.databaseConfig.user | quote }}
+                - "-d"
+                - {{ .Values.databaseConfig.name | quote }}
+            initialDelaySeconds: {{ .Values.statefulset.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.statefulset.probes.readiness.periodSeconds }}
+
+          # Liveness Probe
+          livenessProbe:
+            exec:
+              command:
+                - "pg_isready"
+                - "-U"
+                - {{ .Values.databaseConfig.user | quote }}
+                - "-d"
+                - {{ .Values.databaseConfig.name | quote }}
+            initialDelaySeconds: {{ .Values.statefulset.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.statefulset.probes.liveness.periodSeconds }}
+          
+          # Environment Variables for PostgresDB
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.databaseConfig.name | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.databaseConfig.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.key }}
+
+          # Resources
+          resources:
+            {{- toYaml .Values.statefulset.resources | nindent 12 }}
+          
+          # Volume Mounts for the database
+          volumeMounts:
+            - name: postgres-db-data
+              mountPath: /var/lib/postgresql/data
+            - name: hba-config
+              mountPath: {{ .Values.hbaConfig.mountPath }}
+              readOnly: true
+      
+      # Define the volume for mounting HBA config
+      volumes:
+        - name: hba-config
+          configMap:
+            name: {{ .Values.hbaConfig.configMapName }}
+  
+  # This section defines the request for persistent storage for each replica.
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size }}
+
+      {{- if .Values.persistence.storageClassName }}
+      storageClassName: {{ .Values.persistence.storageClassName }}
+      {{- end }}
+  {{- end }}

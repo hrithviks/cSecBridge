@@ -1,0 +1,95 @@
+# Default values for the postgres-service Helm chart.
+# This file is structured to group values by the Kubernetes resource or
+# logical component they configure.
+
+# *** SERVICEACCOUNT ***
+serviceAccount:
+  enabled: true
+  name: csb-app-sa
+
+# *** STATEFULSET ***
+# Values that configure the StatefulSet resource which manages the database pod.
+statefulset:
+  replicaCount: 1
+  image:
+    uri: "ghcr.io/hrithviks/csb-db-qa"
+    pullPolicy: Always
+    tag: "latest"
+
+  # Health probes for the container.
+  probes:
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readiness:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+
+  # Resource requests and limits for the container.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1" # 1 vCPU
+      memory: 1Gi
+
+imagePullSecrets:
+  - name: csb-gh-secret
+
+# *** SERVICE ***
+# Values for the ClusterIP Service that provides a stable internal endpoint.
+service:
+  type: ClusterIP
+  port: 5432
+
+# *** PERSISTENT VOLUME ***
+# Configures the PersistentVolumeClaim for durable data storage.
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClassName: "standard"
+
+# *** POSTGRES APP CONFIGURATION ***
+# These values are passed as environment variables to the PostgreSQL container
+# to configure the database instance itself.
+databaseConfig:
+  name: "csb_app_db"
+  user: "csb_admin"
+
+# *** SECRETS ***
+# Secret definition for illustration only; All secrets will be generated
+# by the pipeline.
+secrets:
+  create: false
+  name: "postgres-admin-secret"
+  key: "csb-admin-password"
+
+  # NOTE: This default value is for testing only.
+  value: "dummy-gibberish-ransfhqasfqw90rqn3r3q*3rqwfa1313"
+
+# *** NETWORK POLICY ***
+networkPolicy:
+  enabled: true
+  # Ingress rules define the inbound connections allowed TO the database.
+  ingress:
+    # This section defines the labels for the api-service pods that are
+    # allowed to connect. These labels must match the api-service's chart.
+    fromApiService:
+      podSelector:
+        app.kubernetes.io/name: csb-api-service
+
+# ***CUSTOM HBA CONFIG***
+hbaConfig:
+  enabled: true
+  configMapName: "postgres-hba-config"
+  data: |
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+    local   all             all                                     trust
+    # Allow connections from the Kube Pod Network (10.244.0.0/16 is the standard CIDR)
+    host    csb_app_db      csb_api_user    10.244.0.0/24           scram-sha-256
+    host    csb_app_db      csb_app         10.244.0.0/24           scram-sha-256
+    host    all             all             127.0.0.1/32            scram-sha-256
+    host    all             all             ::1/128                 scram-sha-256
+    host    replication     all             0.0.0.0/0               scram-sha-256
+  mountPath: "/etc/postgres-config"

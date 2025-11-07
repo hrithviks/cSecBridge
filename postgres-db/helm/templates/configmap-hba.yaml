@@ -1,0 +1,16 @@
+{{- if .Values.hbaConfig.enabled -}}
+# ------------------------------------------------
+# Configmap for mounting HBA config for PostgresDB
+# ------------------------------------------------
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.hbaConfig.configMapName }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  pg_hba.conf: |
+    {{- .Values.hbaConfig.data | nindent 4 }}
+{{- end -}}

@@ -1,0 +1,112 @@
+# -----------------------------------------------------------------------------
+# Kubernetes Manifest for a Test PostgreSQL Deployment
+
+# Resources created:
+#   1. Namespace: An isolated environment for the database.
+#   2. Secret: To securely store the database password.
+#   3. ConfigMap: To store non-sensitive configuration.
+#   4. StatefulSet: To manage the database pod with persistent storage.
+#   5. Service: To provide a stable internal network endpoint for the database.
+# -----------------------------------------------------------------------------
+
+# Creates an isolated logical space for our database resources.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csecbridge-db-demo
+---
+# Sample secrets for the database password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: csecbridge-db-demo
+type: Opaque
+stringData:
+  # For representational purpose only
+  password: "i_am_not_the_password"
+---
+# Config map for the database name and admin user
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: csecbridge-db-demo
+data:
+  POSTGRES_DB: "csecbridge_db"
+  POSTGRES_USER: "csecbridge_admin"
+---
+# Database resource, deployed using stateful set
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-statefulset
+  namespace: csecbridge-db-demo
+spec:
+  # Enable stable DNS names for the pods in the statefulset
+  serviceName: "postgres-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          # Simple image from the dockerhub
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+
+          # Optional health check
+
+          # Inject configuration from the ConfigMap and Secret.
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+          # Mount the persistent volume into the container's data directory.
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+  # Persistent volume template for each pod
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        # This requests a volume that can be attached to one node at a time.
+        accessModes: ["ReadWriteOnce"]
+        # Place holder for storage class definition
+        # StorageClass:
+
+        # Docker Desktop has a default StorageClass that will fulfill this request.
+        resources:
+          requests:
+            storage: 1Gi # Request 5 GB of persistent storage.
+---
+# ClusterIP service to connect to the Pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: csecbridge-db-demo
+spec:
+  # ClusterIP is the default type and is correct for an internal-only service.
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    # Route to the POD
+    app: postgres

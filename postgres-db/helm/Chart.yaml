@@ -1,0 +1,6 @@
+apiVersion: v2
+name: csb-postgres-service
+description: A Helm chart to deploy a persistent PostgreSQL instance for CSecBridge.
+type: application
+version: 1.0.0
+appVersion: "15.0.0"
