@@ -8,89 +8,109 @@ It is designed to be configurable for various environments and follows best prac
 
 * Kubernetes cluster v1.21+ with a Network Policy provider (e.g., Calico, Cilium).  
 * Helm v3.2.0+  
-* A pre-existing namespace where the service will be deployed.  
-* Backend services (PostgreSQL, Redis) must be available and accessible from within the cluster.
+* A pre-existing namespace where the service will be deployed (managed by platform-config).  
+* A ServiceAccount with correct RBAC permissions (managed by platform-config).  
+* Backend services (PostgreSQL, Redis) must be available and accessible from within the cluster.  
+* Kubernetes secrets for the API token, DB password, and Redis password must be created in the target namespace *before* deploying this chart.
 
 ## **Installing the Chart**
 
-To install the chart with the release name api-release into the csecbridge-dev namespace:
+This chart is designed to be deployed by a CI/CD pipeline (like the one in .github/workflows/api-service.yaml) which handles secret creation and provides dynamic values.
 
-\# To install with default values (which creates secrets), run:  
-helm install api-release ./api\_service/helm \--namespace csecbridge-dev
+Example deployment command:
 
-\# To override a value, for example to disable secret creation for a  
-\# CI/CD pipeline, you can use the \--set flag:  
-helm install api-release ./api\_service/helm \--namespace csecbridge-dev \--set secrets.create=false
+helm upgrade \--install api-service-release ./api-service/helm \\  
+  \--namespace csecbridge-dev \\  
+  \--set deployment.image.uri="ghcr.io/hrithviks/csecbridge-api-service:dev-sha12345" \\  
+  \--set secrets.apiToken.name="csb-api-token-secret" \\  
+  \--set secrets.postgres.name="csb-postgres-api-user-secret" \\  
+  \--set secrets.redis.name="csb-redis-user-secret"
 
 ## **Uninstalling the Chart**
 
-To uninstall the api-release deployment:
+To uninstall the api-service-release deployment:
 
-helm uninstall api-release \--namespace csecbridge-dev
+helm uninstall api-service-release \--namespace csecbridge-dev
 
 ## **Configuration**
 
-The following table lists the configurable parameters of the API Service chart and their default values. The parameters are structured to match the values.yaml file.
+The following table lists the configurable parameters of the API Service chart and their default values from values.yaml.
 
 ### **Deployment Settings**
 
 | Parameter | Description | Default |
 | :---- | :---- | :---- |
 | deployment.replicaCount | Number of pods to run for the deployment. | 1 |
-| deployment.image.repository | The container image to use. | csecbridge-api-service |
-| deployment.image.tag | The tag of the container image. | "" (uses Chart.AppVersion) |
-| deployment.image.pullPolicy | The image pull policy. | IfNotPresent |
-| deployment.resources | CPU/Memory resource requests and limits for the container. | {} (No limits) |
+| deployment.image.uri | The container image URI to use. | ghcr.io/hrithviks/csb-api-qa |
+| deployment.image.pullPolicy | The image pull policy. | Always |
+| deployment.image.tag | The tag of the container image. | latest |
+| deployment.resources | CPU/Memory resource requests and limits. | (requests: 100m, 128Mi) |
+
+### **Service Account**
+
+| Parameter | Description | Default |
+| :---- | :---- | :---- |
+| serviceAccount.name | Name of the *existing* ServiceAccount to use. | csb-app-sa |
+
+### **Image Pull Secrets**
+
+| Parameter | Description | Default |
+| :---- | :---- | :---- |
+| imagePullSecrets\[0\].name | Name of the *existing* secret to pull container images. | csb-gh-secret |
 
 ### **Service and Ingress Settings**
 
 | Parameter | Description | Default |
 | :---- | :---- | :---- |
-| service.type | The type of Kubernetes Service to create. | ClusterIP |
+| service.type | The type of Kubernetes Service. | ClusterIP |
 | service.port | The port the Service and container expose. | 8000 |
 | ingress.enabled | If true, an Ingress resource will be created. | false |
-| ingress.hosts | A list of hostnames and paths for the Ingress. | \[{host: "...", paths: \[...\]}\] |
-| ingress.annotations | A dictionary of annotations to add to the Ingress. | {} |
+| ingress.hosts | Host and path rules for the Ingress. | csecbridge-api.local |
 
 ### **Autoscaling Settings**
 
 | Parameter | Description | Default |
 | :---- | :---- | :---- |
-| autoscaling.enabled | If true, a HorizontalPodAutoscaler will be created. | false |
+| autoscaling.enabled | If true, a HorizontalPodAutoscaler is created. | false |
 | autoscaling.minReplicas | Minimum number of replicas for the HPA. | 1 |
 | autoscaling.maxReplicas | Maximum number of replicas for the HPA. | 5 |
 | autoscaling.targetCPUUtilizationPercentage | Target CPU utilization to trigger scaling. | 80 |
 
 ### **Application Configuration (ConfigMap)**
 
+These values are populated into the csb-api-service-config ConfigMap.
+
 | Parameter | Description | Default |
 | :---- | :---- | :---- |
-| config.cacheTtlSeconds | TTL for Redis cache entries in seconds. | 300 |
-| config.postgresMaxConn | Max connections for the app's database pool. | 5 |
-| config.allowedOrigin | The CORS allowed origin for the frontend UI. | "http://localhost:3000" |
-| config.postgresHost | Hostname for the PostgreSQL service. | postgres-service |
+| config.postgresMaxConn | Max connections for the app's database pool. | 10 |
+| config.allowedOrigin | The CORS allowed origin for the frontend UI. | localhost |
+| config.postgresHost | Hostname for the PostgreSQL service. | csb-postgres-service |
 | config.postgresPort | Port for the PostgreSQL service. | 5432 |
-| config.postgresUser | Username for the PostgreSQL database. | csecbridge\_user |
-| config.postgresDb | Name of the PostgreSQL database. | csecbridge\_db |
-| config.redisHost | Hostname for the Redis service. | redis-service |
+| config.postgresUser | Username for the PostgreSQL database. | csb\_api\_user |
+| config.postgresDb | Name of the PostgreSQL database. | csb\_app\_db |
+| config.redisHost | Hostname for the Redis service. | csb-redis-service |
 | config.redisPort | Port for the Redis service. | 6379 |
-| config.postgresSslEnabled | If true, the app will connect to PostgreSQL using SSL. | false |
-| config.redisSslEnabled | If true, the app will connect to Redis using SSL. | false |
+| config.redisUser | Username for the Redis ACL user. | csb\_api\_client |
 
 ### **Secrets Management**
 
+This chart **does not create secrets**. It maps environment variables to *existing* Kubernetes secrets.
+
 | Parameter | Description | Default |
 | :---- | :---- | :---- |
-| secrets.create | If true, the chart will create Secret objects. Set to false for production. | true |
-| secrets.apiAuthToken | The static API token for authentication. | super-secret-test-token |
-| secrets.postgresPassword | The password for the PostgreSQL database. | a-very-strong-and-random-password |
-| secrets.redisPassword | The password for the Redis service. | another-strong-random-password |
+| secrets.enabled | (Deprecated) Placeholder, as secrets are mounted from existing ones. | false |
+| secrets.apiToken.name | Name of the *existing* secret holding the API token. | csb-api-token-secret |
+| secrets.apiToken.key | Key within the secret for the API token. | csb-api-token |
+| secrets.postgres.name | Name of the *existing* secret holding the DB password. | csb-postgres-api-user-secret |
+| secrets.postgres.key | Key within the secret for the DB password. | csb-api-user-pswd |
+| secrets.redis.name | Name of the *existing* secret holding the Redis password. | csb-redis-user-secret |
+| secrets.redis.key | Key within the secret for the Redis password. | csb-api-redis-pswd |
 
 ### **NetworkPolicy Settings**
 
 | Parameter | Description | Default |
 | :---- | :---- | :---- |
-| networkPolicy.enabled | If true, a NetworkPolicy resource will be created to firewall the pods. | true |
-| networkPolicy.egress.postgres.podSelector | The labels to select the PostgreSQL pods for allowed outbound traffic. | app.kubernetes.io/name: postgresql |
-| networkPolicy.egress.redis.podSelector | The labels to select the Redis pods for allowed outbound traffic. | app.kubernetes.io/name: redis |
-| networkPolicy.egress.dns.podSelector | The labels to select the Kubernetes DNS pods for allowed outbound traffic. | k8s-app: kube-dns |
+| networkPolicy.enabled | If true, a NetworkPolicy is created to firewall pods. | false |
+| networkPolicy.egress.postgres.podSelector | Labels to select the PostgreSQL pods (for egress). | app.kubernetes.io/name: postgresql |
+| networkPolicy.egress.redis.podSelector | Labels to select the Redis pods (for egress). | app.kubernetes.io/name: redis |
+| networkPolicy.egress.dns.podSelector | Labels to select the Kubernetes DNS pods (for egress). | k8s-app: kube-dns |
