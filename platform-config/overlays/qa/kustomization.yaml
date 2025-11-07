@@ -1,0 +1,27 @@
+# -------------------------------------------------
+# Kustomize overlay configures the 'qa' environment
+# -------------------------------------------------
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Inherit from the base and add overlay-specific resources in a single list.
+resources:
+  - ../../base
+  - role-binding.yaml
+
+# Set the namespace for all resources in this overlay.
+namespace: csb-qa
+
+# Apply patches to the base resources.
+patches:
+  - target:
+      kind: Namespace
+      name: csb-placeholder
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: csb-qa
+      - op: replace
+        path: /metadata/labels/name
+        value: csb-qa

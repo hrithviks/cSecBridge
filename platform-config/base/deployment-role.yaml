@@ -1,0 +1,33 @@
+# ----------------------------------------------
+# Deployment manager role template for Kustomize
+# ----------------------------------------------
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: csb-app-deployer-role
+  # The namespace will be set automatically by the Kustomize overlay.
+rules:
+  # Core Kubernetes resources permissions
+  - apiGroups: ["", "apps", "networking.k8s.io"]
+    resources:
+      [
+        "deployments",
+        "statefulsets",
+        "daemonsets",
+        "services",
+        "pods",
+        "configmaps",
+        "secrets",
+        "ingresses",
+        "networkpolicies",
+      ]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Autoscaling resources
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Read-only permissions for logs
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]

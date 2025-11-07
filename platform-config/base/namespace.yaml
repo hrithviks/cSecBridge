@@ -1,0 +1,10 @@
+# --------------------------------
+# Namespace template for Kustomize
+# --------------------------------
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csb-placeholder
+  labels:
+    name: csb-placeholder
