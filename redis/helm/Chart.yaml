@@ -1,0 +1,6 @@
+apiVersion: v2
+name: csb-redis-service
+description: A Helm chart to deploy Redis service for cSecBridge
+type: application
+version: 1.0.0
+appVersion: "7.0.0"

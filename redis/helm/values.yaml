@@ -1,0 +1,79 @@
+# Default values for the redis-service Helm chart.
+# This file is structured to group values by the Kubernetes resource or
+# logical component they configure.
+
+# *** SERVICEACCOUNT ***
+serviceAccount:
+  enabled: true
+  name: csb-app-sa
+
+# *** STATEFULSET ***
+# Values that configure the StatefulSet resource which manages the redis pod.
+statefulset:
+  replicaCount: 1
+  image:
+    uri: "ghcr.io/hrithviks/csb-redis-qa"
+    pullPolicy: Always
+    tag: "latest"
+
+  # Health probes for the container.
+  probes:
+    liveness:
+      initialDelaySeconds: 15
+      periodSeconds: 10
+    readiness:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+
+  # Resource requests and limits for the container.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Image pull secret for the pod
+imagePullSecrets:
+  - name: csb-gh-secret
+
+# *** SERVICE ***
+# Values for the ClusterIP Service that provides a stable internal endpoint.
+service:
+  type: ClusterIP
+  port: 6379
+
+# *** PERSISTENT VOLUME ***
+# Configures the PersistentVolumeClaim for durable data storage (AOF)
+persistence:
+  enabled: true
+  size: 0.5Gi
+  storageClassName: "standard"
+
+# *** SECRETS ***
+# Secret definition for illustration only; All secrets will be generated
+# by the pipeline.
+secrets:
+  create: false
+  name: "redis-secret"
+  key: "csb-redis-password"
+
+  # NOTE: This default value is for testing only.
+  value: "dummy-gibberish-ransfhqasfqw90rqn3r3q*3rqwfa1313"
+
+# *** NETWORK POLICY ***
+networkPolicy:
+  enabled: true
+  # Define the ingress source (the allowed client pods).
+  ingress:
+    fromApiService:
+      # This selects pods with the labels of the api-service chart.
+      # Must match the labels set in the api-service chart.
+      podSelector:
+        app.kubernetes.io/name: csb-api-service
+
+# Optional external exposure (if needed)
+ingress:
+  enabled: false
+  # ... (placeholder for host rules if needed)
