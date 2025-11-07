@@ -1,7 +1,0 @@
-Flask == 3.1.2
-jsonschema == 4.25.1
-psycopg2 == 2.9.10
-Flask-Limiter
-Flask-Talisman
-Flask-Cors
-redis == 6.4.0

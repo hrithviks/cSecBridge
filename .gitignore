@@ -1,6 +1,13 @@
 .DS_Store
 require.txt
 venv
-notes.md
+*notes.md
 design*
 test*
+Docker
+issues.md
+testing/*
+doc*.md
+*.bak
+__pycache__
+debug*
