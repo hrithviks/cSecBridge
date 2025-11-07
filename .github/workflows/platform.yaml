@@ -1,0 +1,82 @@
+# ################################################################################
+# .github/workflows/platform.yaml                                                #
+#                                                                                #
+# This workflow manages the CSecBridge platform configuration (namespaces, RBAC).#
+# It ensures that the necessary environment exists in the cluster before any,    #
+# application services are deployed.                                             #
+# ################################################################################
+
+name: Platform Configuration Pipeline
+
+# Workflow Concurrency Control
+# Ensures only one platform update per branch runs at a time.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+# Workflow Triggers
+# This workflow runs ONLY when files in the platform-config directory are changed.
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "platform-config/**"
+  workflow_dispatch:
+
+jobs:
+  ####################################
+  # JOB 1: APPLY DEV PLATFORM CONFIG #
+  ####################################
+  apply-dev-platform:
+    if: false # Temporarily disabled
+    name: Apply Dev Platform Config
+    runs-on: ubuntu-latest
+
+    # This job only runs on a push to the 'dev' branch.
+    # if: github.ref == 'refs/heads/dev'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Kubectl for Dev Cluster
+        uses: ./.github/actions/setup-kubectl
+        with:
+          # Use DEV cluster config data
+          kube_config_data: ${{ secrets.KUBE_CONFIG_DATA_DEV }}
+
+      - name: Apply Kustomize config for dev
+        run: |
+          echo "Applying platform configuration to 'dev' environment..."
+          kubectl apply -k platform-config/overlays/dev
+
+  #####################################
+  # JOB 2: APPLY PROD PLATFORM CONFIG #
+  #####################################
+  apply-prod-platform:
+    if: false # Temporarily disabled
+    name: Apply Prod Platform Config
+    runs-on: ubuntu-latest
+
+    # This job only runs on a push to the 'main' branch.
+    # if: github.ref == 'refs/heads/main'
+
+    environment:
+      name: production-platform
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Kubectl for Prod Cluster
+        uses: ./.github/actions/setup-kubectl
+        with:
+          # Use PROD cluster config data
+          kube_config_data: ${{ secrets.KUBE_CONFIG_DATA_PROD }}
+
+      - name: Apply Kustomize config for prod
+        run: |
+          echo "Applying platform configuration to 'prod' environment..."
+          kubectl apply -k platform-config/overlays/prod

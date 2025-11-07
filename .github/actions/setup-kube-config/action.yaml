@@ -1,0 +1,28 @@
+# .github/actions/setup-kube-config/action.yml
+# Setup kubectl config
+
+name: "Setup Kubectl Context"
+description: "Installs kubectl and configures a kubeconfig from a base64-encoded secret."
+
+# Action Inputs
+# Defines the parameters this action accepts.
+inputs:
+  kube_config_data:
+    description: "The base64-encoded kubeconfig file data."
+    required: true
+
+# Action Steps
+# Defines the steps the action will run.
+runs:
+  using: "composite"
+  steps:
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      shell: bash
+
+    - name: Configure kubectl
+      shell: bash
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ inputs.kube_config_data }}" | base64 -d > ~/.kube/config
+        echo "kubectl context configured successfully."

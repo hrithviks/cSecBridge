@@ -1,0 +1,69 @@
+# ##############################################################################
+# .github/workflows/api-service.yaml                                           #
+#                                                                              #
+# This workflow defines the CI/CD pipeline for the CSecBridge API Service.     #
+# It automates linting, building, and deploying to dev and prod environments.  #
+# ##############################################################################
+
+name: Release Workflow for CSecBridge App
+
+# Workflow Concurrency Control
+# Scoped to the specific branch (ref). Ensures a single active workflow per branch.
+# For PROD, workflow will be queued. For DEV, workflow will be replaced.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+# Workflow Triggers
+# This workflow runs automatically on push to release branches.
+on:
+  push:
+    branches:
+      - release**
+
+jobs:
+  #############################
+  # JOB 1: Deploy to Pre-PROD #
+  #############################
+  deploy-preprod:
+    if: false # Disable for now
+    name: Deploy to Pre-PROD
+    runs-on: ubuntu-latest
+
+    environment:
+      name: preprod
+
+    steps:
+      # CHECK IF DEPENDENT SERVICES ARE ACTIVE
+      # DEPLOY API-SERVICE TO PRE-PROD
+      - name: Deploy API-Service to Pre-PROD
+        run: |
+          echo "Step-1: Creates the setup for Kubectl and Helm on Pre-Prod"
+          echo "Step-2: Installs the helm chart. The image tag should be derived from release tag. If not found, latest should be taken"
+      - name: Deploy Front-End Service to Pre-PROD
+        run: |
+          echo "Step-1: Creates the setup for Kubectl and Helm on Pre-Prod"
+          echo "Step-2: Installs the helm chart. The image tag should be derived from release tag. If not found, latest should be taken"
+
+  #########################
+  # JOB 2: Deploy to PROD #
+  #########################
+  deploy-prod:
+    if: false # Disable for now
+    name: Deploy to PROD
+    runs-on: ubuntu-latest
+
+    environment:
+      name: prod
+
+    steps:
+      # CHECK IF DEPENDENT SERVICES ARE ACTIVE
+      # DEPLOY API-SERVICE TO PRE-PROD
+      - name: Deploy API-Service to PROD
+        run: |
+          echo "Step-1: Creates the setup for Kubectl and Helm on Prod"
+          echo "Step-2: Installs the helm chart. The image tag should be derived from release branch tag. If not found, latest will be deployed"
+      - name: Deploy Front-End Service to PROD
+        run: |
+          echo "Step-1: Creates the setup for Kubectl and Helm on Prod"
+          echo "Step-2: Installs the helm chart. The image tag should be derived from release branch tag. If not found, latest will be deployed"

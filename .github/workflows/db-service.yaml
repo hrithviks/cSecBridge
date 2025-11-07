@@ -1,0 +1,49 @@
+# ##############################################################################
+# .github/workflows/db-service.yaml                                            #
+#                                                                              #
+# This workflow defines the CI/CD pipeline for the CSecBridge PostgresDB.      #
+# It automates linting, building, and deploying to dev/test/prod environments. #
+#                                                                              #
+# ##############################################################################
+
+name: Deployment Workflow for PostgresDB
+
+# Workflow Concurrency Control
+# Scoped to the specific branch (ref). Ensures a single active workflow per branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+# Workflow Triggers
+# This workflow runs automatically on every push to the 'main' or 'dev' branch.
+on:
+  push:
+    branches:
+      - dummy # Dummy branch
+    paths:
+      - "postgres-db/**"
+      - ".github/workflows/db-service.yaml"
+
+  # Allows manual triggering (only enabled for DEV)
+  workflow_dispatch:
+
+# Environment variables for the workflow
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/csecbridge-api-service
+
+jobs:
+  lint-and-build:
+    if: false # Disable for now
+    runs-on: ubuntu-latest
+    steps:
+      - name: Default
+        run: echo "testing..."
+
+  # JOB-1: Build the custom Docker image and push to github container registry.
+  # JOB-2: Deploy to DEV
+  # - Step-1: Checkout repository
+  # - Step-2: Setup kubernetes cluster config
+  # - Step-3: Create kubernetes secrets
+  # - Step-4: Helm installation
+  # JOB-3: Deploy to TEST
+  # JOB-4: Deploy to PROD

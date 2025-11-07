@@ -1,0 +1,112 @@
+# ##############################################################################
+# .github/workflows/api-service.yaml                                           #
+#                                                                              #
+# This workflow defines the CI/CD pipeline for the CSecBridge API Service.     #
+# It automates linting, building, and deploying to dev/test environment.       #
+#                                                                              #
+# Note: Production deployment will be handled by a separate release pipeline.  #
+# ##############################################################################
+
+name: Deployment Workflow for CSecBridge API Service
+
+# Workflow Concurrency Control
+# Scoped to the specific branch (ref). Ensures a single active workflow per branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+# Workflow Triggers
+# This workflow runs automatically on every push to the 'main' or 'dev' branch.
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "api-service/**"
+      - ".github/workflows/api-service.yaml"
+
+  # Allows manual triggering (only enabled for DEV)
+  workflow_dispatch:
+
+# Environment variables for the workflow
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/csecbridge-api-service
+
+jobs:
+  #########################################
+  # JOB 1: Lint and Build the Source Code #
+  #########################################
+  lint-and-build:
+    if: false # Disable for now
+    name: Lint and Build Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_full_name: ${{ steps.build_push.outputs.tags }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies for linting
+        run: pip install flake8
+
+      - name: Run linter
+        run: flake8 api-service/source/
+
+      - name: Build and Push Docker Image
+        id: build_push
+        uses: ./.github/actions/build-docker-image/
+        with:
+          registry_username: ${{ github.repository_owner }}
+          registry_password: ${{ secrets.GH_PAT }}
+          image_name: ${{ env.IMAGE_NAME }}
+          dockerfile_context: ./api-service
+          git_ref_name: ${{ github.ref_name }}
+
+  ################################
+  # JOB 2: Deploy to Development #
+  ################################
+  deploy-dev:
+    if: false # Disable for now
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: lint-and-build # This job runs only after 'lint-and-build' succeeds
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl for dev cluster
+        uses: ./.github/actions/setup-kube-config/
+        with:
+          kube_config_data: ${{ secrets.KUBE_INIT_CONFIG_DATA }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - name: Create DEV Secrets
+        uses: ./.github/actions/create-kube-secrets
+        with:
+          api_token: ${{ secrets.DEV_API_TOKEN }}
+          db_password: ${{ secrets.DEV_DB_PASSWORD }}
+          redis_password: ${{ secrets.DEV_REDIS_PASSWORD }}
+          namespace: csecbridge-dev
+
+      - name: Deploy to Dev with Helm
+        uses: ./.github/actions/helm-deploy
+        with:
+          release_name: api-service-dev
+          namespace: csb-dev
+          chart_path: ./api-service/helm
+          image_full_name: ${{ needs.lint-and-build.outputs.image_full_name }}
+          # Overrides the default values set in helm configuration
+          values_overrides: >-
+            --set ingress.enabled=true
+            --set secrets.apiToken.create=false
+            --set secrets.postgres.create=false
+            --set secrets.redis.create=false

@@ -1,0 +1,60 @@
+# .github/actions/build-docker-image/action.yml
+# This composite action logs into container registry, builds a Docker image with a
+# versioned tag, and pushes it.
+
+name: "Build and Push Docker Image"
+description: "Builds, tags, and pushes a Docker image to a container registry."
+
+# --- Inputs ---
+# Defines the parameters this action accepts.
+inputs:
+  registry_username:
+    description: "The username for the container registry."
+    required: true
+  registry_password:
+    description: "The password or token for the container registry."
+    required: true
+  image_name:
+    description: "The full name of the image repository (e.g., ghcr.io/owner/repo)."
+    required: true
+  dockerfile_context:
+    description: "The path to the build context for the Dockerfile."
+    required: true
+  git_ref_name:
+    description: "The Git ref name (branch) to use in the image tag prefix."
+    required: true
+
+# *** Action Outputs ***
+# Defines the data this action will produce.
+outputs:
+  image_full_name:
+    description: "The full name of the pushed image, including the generated tag."
+    value: ${{ steps.image_meta.outputs.tags }}
+
+# *** Action Steps ***
+# Defines the steps the action will run.
+runs:
+  using: "composite"
+  steps:
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io # Hardcoding, to github registry for now.
+        username: ${{ inputs.registry_username }}
+        password: ${{ inputs.registry_password }}
+
+    - name: Extract Docker metadata (tags, labels)
+      id: image_meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ inputs.image_name }}
+        tags: |
+          type=sha,prefix=${{ inputs.git_ref_name }}-
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.dockerfile_context }}
+        push: true
+        tags: ${{ steps.image_meta.outputs.tags }}
+        labels: ${{ steps.image_meta.outputs.labels }}
