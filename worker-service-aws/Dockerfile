@@ -1,5 +1,4 @@
-# --- Stage 1: Builder (Efficient Dependency Install) ---
-# Use an official Python runtime as a parent image.
+# Stage 1: Builder
 FROM python:3.13-slim as builder
 
 # Set environment variables for best practices
@@ -14,16 +13,15 @@ COPY src/requirements.txt .
 # This includes all libraries needed for the worker
 RUN pip wheel --no-cache-dir --wheel-dir /usr/src/app/wheels -r requirements.txt
 
-
-# --- Stage 2: Final Image (Security Hardening) ---
+# Stage 1: Final Image
 FROM python:3.13-slim
 
 # Set environment variables again for the final stage
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Create a dedicated, non-root user for security
-RUN groupadd -r csecbridge && useradd --no-log-init -r -g csecbridge csecbridge
+# Create the standard csbuser
+RUN groupadd -r csbuser && useradd --no-log-init -r -g csbuser csbuser
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -39,15 +37,11 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.t
 # Copy the application source code from the source/ directory
 COPY src/ .
 
-# Change the ownership of the application directory to the non-root user
-RUN chown -R csecbridge:csecbridge /usr/src/app
+# Change the ownership of the application directory to the standard app user
+RUN chown -R csbuser:csbuser /usr/src/app
 
-# Switch to the non-root user (security best practice)
-USER csecbridge
+# Switch to the standard app user
+USER csbuser
 
-# --- Define the command to run the worker ---
-# We use Gunicorn to manage the worker process reliably.
-# Gunicorn will continuously call the 'app' function in worker.py, which starts
-# the infinite BRPOP loop.
-# We set 1 worker and 1 thread for a simple, single-threaded consumer.
+# Gunicorn entrypoint
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "1", "worker:app"]
