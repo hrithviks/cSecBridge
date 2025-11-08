@@ -65,13 +65,22 @@ secrets:
 # *** NETWORK POLICY ***
 networkPolicy:
   enabled: true
-  # Define the ingress source (the allowed client pods).
+  # Define the ingress sources (the allowed client pods).
   ingress:
-    fromApiService:
-      # This selects pods with the labels of the api-service chart.
-      # Must match the labels set in the api-service chart.
-      podSelector:
-        app.kubernetes.io/name: csb-api-service
+    # A list of podSelectors defining which pods can connect.
+    from:
+      # 1. Allow connections from the API-Service
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: csb-api-service
+      # 2. Allow connections from the AWS-Worker-Service
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: csb-aws-worker-service
+      # 3. Allow connections from the Azure-Worker-Service
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: csb-azure-worker-service
 
 # Optional external exposure (if needed)
 ingress:

@@ -23,11 +23,10 @@ spec:
   # Ingress rule to update the inbound rule for database connection.
   ingress:
   - from:
-    # This rule allows connections FROM pods that match these labels.
-    - podSelector:
-        matchLabels:
-          # The labels are taken from the values.yaml file.
-          {{- toYaml .Values.networkPolicy.ingress.fromApiService.podSelector | nindent 10 }}
+    # Loop through the allowed pods to connect
+    {{- range .Values.networkPolicy.ingress.from }}
+    - {{ toYaml . | nindent 6 }}
+    {{- end }}
     ports:
     # The connection is only allowed on the specified PostgreSQL port.
     - protocol: TCP

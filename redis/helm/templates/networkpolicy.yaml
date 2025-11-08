@@ -20,11 +20,11 @@ spec:
   - Ingress
 
   ingress:
-  # From API-Service Pod
   - from:
-    - podSelector:
-        matchLabels:
-          {{- toYaml .Values.networkPolicy.ingress.fromApiService.podSelector | nindent 10 }}
+    # Loop through the allowed pods to connect
+    {{- range .Values.networkPolicy.ingress.from }}
+    - {{ toYaml . | nindent 6 }}
+    {{- end }}
     ports:
     - protocol: TCP
       port: {{ .Values.service.port }}

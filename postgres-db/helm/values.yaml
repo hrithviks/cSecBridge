@@ -73,11 +73,17 @@ networkPolicy:
   enabled: true
   # Ingress rules define the inbound connections allowed TO the database.
   ingress:
-    # This section defines the labels for the api-service pods that are
-    # allowed to connect. These labels must match the api-service's chart.
-    fromApiService:
-      podSelector:
-        app.kubernetes.io/name: csb-api-service
+    # A list of podSelectors to allow ingress traffic from.
+    from:
+      # 1. Allow connections FROM the API-Service
+      - podSelector:
+          app.kubernetes.io/name: csb-api-service
+      # 2. Allow connections FROM the AWS-Worker-Service
+      - podSelector:
+          app.kubernetes.io/name: csb-aws-worker-service
+      # 3. Allow connections FROM the Azure-Worker-Service
+      - podSelector:
+          app.kubernetes.io/name: csb-azure-worker-service
 
 # ***CUSTOM HBA CONFIG***
 hbaConfig:
@@ -88,6 +94,8 @@ hbaConfig:
     local   all             all                                     trust
     # Allow connections from the Kube Pod Network (10.244.0.0/16 is the standard CIDR)
     host    csb_app_db      csb_api_user    10.244.0.0/24           scram-sha-256
+    host    csb_app_db      csb_aws_user    10.244.0.0/24           scram-sha-256
+    host    csb_app_db      csb_azure_user  10.244.0.0/24           scram-sha-256
     host    csb_app_db      csb_app         10.244.0.0/24           scram-sha-256
     host    all             all             127.0.0.1/32            scram-sha-256
     host    all             all             ::1/128                 scram-sha-256
