@@ -200,11 +200,11 @@ run_redis_ci_cd_tests() {
   log_info "Section 4: Post Deployment Checks on Kubernetes..."
 
   # Local variables for the section
-  local REDIS_CONFIGMAP="redis-service-config"
-  local REDIS_NETWORK_POLICY="redis-service"
-  local REDIS_SERVICE_NAME="redis-service"
+  local REDIS_CONFIGMAP="csb-redis-service-config"
+  local REDIS_NETWORK_POLICY="csb-redis-service"
+  local REDIS_SERVICE_NAME="csb-redis-service"
   local REDIS_VOL_TEMPLATE="redis-data"
-  local REDIS_STATEFULSET="redis-service"
+  local REDIS_STATEFULSET="csb-redis-service"
 
   # RD-10 : Check if HBA ConfigMap Exists
   if ! run_test "RD-10  :: Config Map Validation for redis.conf" "success" "kubectl \
