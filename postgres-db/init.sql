@@ -30,47 +30,54 @@
  */ ---------------------------------------------------------------------------
 
 -- Set timezone to UTC for consistency across the application
-SET TIMEZONE = 'UTC';
+set timezone = 'utc';
 
 -- Main App Role for Managing Application Objects
-CREATE ROLE CSB_APP;
-ALTER ROLE CSB_APP WITH LOGIN;
-GRANT CONNECT ON DATABASE CSB_APP_DB TO CSB_APP;
-GRANT CREATE ON SCHEMA PUBLIC TO CSB_APP;
+create role csb_app;
+alter role csb_app with login;
+grant connect on database csb_app_db to csb_app;
+grant create on schema public to csb_app;
 
 -- Main App Schema, tied to App Role
-CREATE SCHEMA CSB_APP AUTHORIZATION CSB_APP;
-GRANT USAGE, CREATE ON SCHEMA CSB_APP TO CSB_APP;
+create schema csb_app authorization csb_app;
+grant usage, create on schema csb_app to csb_app;
 
 -- API-Service User Role; Password to be set later on by admin user.
-CREATE ROLE CSB_API_USER;
-ALTER ROLE CSB_API_USER WITH LOGIN;
-GRANT CONNECT ON DATABASE CSB_APP_DB TO CSB_API_USER;
-GRANT USAGE ON SCHEMA PUBLIC TO CSB_API_USER;
-GRANT USAGE ON SCHEMA CSB_APP TO CSB_API_USER;
+create role csb_api_user;
+alter role csb_api_user with login;
+grant connect on database csb_app_db to csb_api_user;
+grant usage on schema public to csb_api_user;
+grant usage on schema csb_app to csb_api_user;
 
 -- AWS-Worker User Role; Password to be set later on by admin user.
-CREATE ROLE CSB_AWS_USER;
-ALTER ROLE CSB_AWS_USER WITH LOGIN;
-GRANT CONNECT ON DATABASE CSB_APP_DB TO CSB_AWS_USER;
-GRANT USAGE ON SCHEMA PUBLIC TO CSB_AWS_USER;
-GRANT USAGE ON SCHEMA CSB_APP TO CSB_AWS_USER;
+create role csb_aws_user;
+alter role csb_aws_user with login;
+grant connect on database csb_app_db to csb_aws_user;
+grant usage on schema public to csb_aws_user;
+grant usage on schema csb_app to csb_aws_user;
 
 -- Azure Worker User Role; Password to be set later on by admin user.
-CREATE ROLE CSB_AZURE_USER;
-ALTER ROLE CSB_AZURE_USER WITH LOGIN;
-GRANT CONNECT ON DATABASE CSB_APP_DB TO CSB_AZURE_USER;
-GRANT USAGE ON SCHEMA PUBLIC TO CSB_AZURE_USER;
-GRANT USAGE ON SCHEMA CSB_APP TO CSB_AZURE_USER;
-
+create role csb_azure_user;
+alter role csb_azure_user with login;
+grant connect on database csb_app_db to csb_azure_user;
+grant usage on schema public to csb_azure_user;
+grant usage on schema csb_app to csb_azure_user;
 
 -- Explicitly REVOKE all other permissions to enforce least privilege.
-REVOKE TRUNCATE, DELETE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA PUBLIC FROM CSB_API_USER;
-REVOKE TRUNCATE, DELETE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA CSB_APP FROM CSB_API_USER;
+revoke truncate, delete, references, trigger on all tables in schema public from csb_api_user;
+revoke truncate, delete, references, trigger on all tables in schema csb_app from csb_api_user;
+
+revoke truncate, delete, references, trigger on all tables in schema public from csb_aws_user;
+revoke truncate, delete, references, trigger on all tables in schema csb_app from csb_aws_user;
+
+revoke truncate, delete, references, trigger on all tables in schema public from csb_azure_user;
+revoke truncate, delete, references, trigger on all tables in schema csb_app from csb_azure_user;
 
 -- Set search path for the roles to both public and csb_app
-ALTER ROLE CSB_APP SET SEARCH_PATH = CSB_APP, PUBLIC;
-ALTER ROLE CSB_API_USER SET SEARCH_PATH = CSB_APP, PUBLIC;
+alter role csb_app set search_path = csb_app, public;
+alter role csb_api_user set search_path = csb_app, public;
+alter role csb_aws_user set search_path = csb_app, public;
+alter role csb_azure_user set search_path = csb_app, public;
 
 -- Log a message to the console upon successful completion
 \echo 'CSecBridge database initialized successfully with roles, tables, and permissions.'
