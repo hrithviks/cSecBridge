@@ -6,7 +6,7 @@ CSecBridge is a modern, cloud-native security solution designed to act as a hybr
 
 The project is built on a decoupled, microservice-based architecture designed for scalability, resilience, and maintainability. All services are containerized with Docker and intended to be deployed and orchestrated by Kubernetes.
 
-For a detailed breakdown of the architectural design, please see the [**Technical Design Document**](https://www.google.com/search?q=./docs/TECH_DESIGN.md).
+For a detailed breakdown of the architectural design, please see the [**Technical Design Document**](https://github.com/hrithviks/cSecBridge/blob/main/docs/tech-design.md).
 
 ### **Core Components**
 
