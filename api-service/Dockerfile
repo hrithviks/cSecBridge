@@ -33,7 +33,7 @@ COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt && rm -rf /wheels
 
 # Copy the application source code
-COPY source/. .
+COPY src/. .
 
 # Change the ownership of the application directory to the non-root user
 RUN chown -R csbuser:csbuser /usr/src/app
