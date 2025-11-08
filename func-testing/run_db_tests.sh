@@ -204,10 +204,10 @@ run_db_ci_cd_tests() {
 
   # Local variables for the section
   local POSTGRES_CONFIGMAP="postgres-hba-config"
-  local POSTGRES_NETWORK_POLICY="postgres-service"
-  local POSTGRES_SERVICE_NAME="postgres-service"
+  local POSTGRES_NETWORK_POLICY="csb-postgres-service"
+  local POSTGRES_SERVICE_NAME="csb-postgres-service"
   local POSTGRES_VOL_TEMPLATE="postgres-db-data"
-  local POSTGRES_STATEFULSET="postgres-service"
+  local POSTGRES_STATEFULSET="csb-postgres-service"
 
   # DB-10 : Check if HBA ConfigMap Exists
   if ! run_test "DB-10  :: PostgresDB HBA Config Map Validation" "success" "kubectl \
@@ -294,14 +294,28 @@ run_db_ci_cd_tests() {
   # DB-18A : Validate administration for App user
   local PSQL_ALTER_APP_USER_CMD="${KUBE_PSQL_EXEC_CMD} \"ALTER ROLE CSB_APP WITH PASSWORD '${CSB_APP_USER_PSWD}';\""
   local PSQL_ALTER_API_USER_CMD="${KUBE_PSQL_EXEC_CMD} \"ALTER ROLE CSB_API_USER WITH PASSWORD '${CSB_API_USER_PSWD}';\""
+  local PSQL_ALTER_AWS_USER_CMD="${KUBE_PSQL_EXEC_CMD} \"ALTER ROLE CSB_AWS_USER WITH PASSWORD '${CSB_AWS_USER_PSWD}';\""
+  local PSQL_ALTER_AZURE_USER_CMD="${KUBE_PSQL_EXEC_CMD} \"ALTER ROLE CSB_AZURE_USER WITH PASSWORD '${CSB_AZURE_USER_PSWD}';\""
   if ! run_test "DB-18A :: PostgresDB APP User Administration" "success" "${PSQL_ALTER_APP_USER_CMD}"; then
     log_info "${RED}Administration failed for app user...${RESET}"
     overall_status=1
   fi
 
-  # DB-18B : Validate administration for Api user
-  if ! run_test "DB-18B :: PostgresDB API User Administration" "success" "${PSQL_ALTER_API_USER_CMD}"; then
-    log_info "${RED}Administration failed for api user...${RESET}"
+  # DB-18B : Validate administration for Api service user
+  if ! run_test "DB-18B :: PostgresDB API Service User Administration" "success" "${PSQL_ALTER_API_USER_CMD}"; then
+    log_info "${RED}Administration failed for api service user...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-18C : Validate administration for AWS worker user
+  if ! run_test "DB-18B :: PostgresDB AWS Worker User Administration" "success" "${PSQL_ALTER_AWS_USER_CMD}"; then
+    log_info "${RED}Administration failed for aws worker user...${RESET}"
+    overall_status=1
+  fi
+
+  # DB-18D : Validate administration for Azure worker user
+  if ! run_test "DB-18B :: PostgresDB Azure Worker User Administration" "success" "${PSQL_ALTER_AZURE_USER_CMD}"; then
+    log_info "${RED}Administration failed for azure worker user...${RESET}"
     overall_status=1
   fi
 
