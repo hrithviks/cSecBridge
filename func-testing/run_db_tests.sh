@@ -88,6 +88,7 @@ validate_platform_config() {
 run_db_ci_cd_tests() {
   log_info "Running Database Service CI Validation..."
   local overall_status=0
+
   ###############################
   # Section 1: Containerization #
   ###############################
@@ -184,7 +185,7 @@ run_db_ci_cd_tests() {
   --install ${CSB_DB_RELEASE_NAME} ${CSB_DB_HELM_CHART_PATH} \
   --namespace ${CSB_NAMESPACE} \
   --set statefulset.image.uri=${GHCR_IMAGE} \
-  --wait --timeout=5m > /tmp/helm_install_$$.log 2>&1"; then
+  --wait --timeout=5m > /tmp/db_helm_install_$$.log 2>&1"; then
     log_info "${RED}Failed to deploy helm chart...${RESET}"
     return 127
   fi

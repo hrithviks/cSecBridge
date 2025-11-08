@@ -18,6 +18,9 @@
 # Usage: ./run_api_ci_tests.sh
 # -----------------------------------------------------------------------------
 
+# Set environment variables
+. .env-api-service
+
 # Global configuration
 set -o pipefail # Exit on pipe failures
 . ./set_test_env.sh
@@ -224,7 +227,7 @@ run_ci_tests() {
   # Secret name is "csb-gh-secret"
   # Secret type is a Docker registry secret, comprising of username, access token and server name
 
-  # CI-08 : Kubernetes GH Token Secret Creation
+  # CI-12 : Kubernetes GH Token Secret Creation
   if ! run_test "CI-12  :: Kubernetes Image Secret Creation" "success" "kubectl create secret docker-registry csb-gh-secret \
     --docker-server="ghcr.io" \
     --docker-username="${GH_USER}" \
@@ -236,25 +239,82 @@ run_ci_tests() {
     return 127
   fi
   
-  # CI-09 : Kubernetes Check Secret - GH Token
+  # CI-13 : Kubernetes Check Secret - GH Token
   if ! run_test "CI-13  :: Kubernetes Image Secret Check" "success" "kubectl get secret csb-gh-secret -n ${CSB_NAMESPACE}"; then
     log_info "${RED}Failed to get kubernetes secret for image token...${RESET}"
     return 127
   fi
-
-  exit 0
 
   ######################################
   # Section 4: Helm Installation Tests #
   ######################################
   log_info "Section 4: Helm Installation Tests"
 
+  # CI-14 : Helm Installation Test for API-Service
+  if ! run_test "CI-14  :: Helm Installation Test" "success" "helm upgrade \
+  --install ${CSB_API_RELEASE_NAME} ${CSB_API_HELM_CHART_PATH} \
+  --namespace ${CSB_NAMESPACE} \
+  --set statefulset.image.uri=${GHCR_IMAGE} \
+  --wait --timeout=5m > /tmp/api_helm_install_$$.log 2>&1"; then
+    log_info "${RED}Failed to deploy helm chart...${RESET}"
+    return 127
+  fi
+  sleep 5
+
+  # CI-15 : Helm Installation Check
+  if ! run_test "CI-15  :: Helm Installation Validation" "success" "helm list \
+  -A -n ${CSB_NAMESPACE} | grep ${CSB_API_RELEASE_NAME}"; then
+    log_info "${RED}Failed to validate helm chart deployment...${RESET}"
+    return 127
+  fi
 
   ########################################
   # Section 5: Kubernetes Resource Tests #
   ########################################
   log_info "Section 5: Kubernetes Resources Tests, post deployment"
 
+  # Local variables for the section
+  local API_CONFIGMAP="csb-api-service-config"
+  local API_SERVICE_NAME="csb-api-service"
+  local API_DEPLOYMENT="csb-api-service"
+
+  # CI-16 : Check if the ConfigMap exists for the service
+  # This is a basic validation. Additional validation should include check for
+  # all the configurations required for the service.
+  if ! run_test "CI-16  :: API-Service Kubernetes Config Map Validation" "success" "kubectl \
+  get configmap ${API_CONFIGMAP} -n ${CSB_NAMESPACE}"; then
+    log_info "${RED}Failed to validate the ConfigMap...${RESET}"
+    overall_status=1
+  fi
+
+  # CI-17 : Check if the ClusterIP Service Exists
+  if ! run_test "CI-17  :: API-Service Kubernetes ClusterIP Service Validation" "success" "kubectl \
+  get service ${API_SERVICE_NAME} -n ${CSB_NAMESPACE} > /dev/null 2>&1"; then
+    log_info "${RED}Failed to validate the ClusterIP Service...${RESET}"
+    overall_status=1
+  fi
+
+  # CI-18 : Check if the Deployment is ready
+  # This is a simple validation, testing the existence of the deployment.
+  # Parse the response to perform advanced validations.
+  if ! run_test "CI-18  :: API-Service Kubernetes Deployment Validation" "success" "kubectl \
+  get deployment ${API_DEPLOYMENT} -n ${CSB_NAMESPACE} > /dev/null 2>&1"; then
+    log_info "${RED}Failed to validate the Deployment...${RESET}"
+    overall_status=1
+  fi
+
+  # CI-19 : Check if the POD is Running
+  # Note: This is a very basic check for the POD status for API service.    
+  if [ `kubectl get pod -n ${CSB_NAMESPACE} | grep ${API_SERVICE_NAME} | wc -l` -gt 0 ]; then
+    if ! run_test "CI-19  :: API-Service Kubernetes POD Validation" "success" "kubectl \
+    get pod -n ${CSB_NAMESPACE} | grep ${API_SERVICE_NAME}- | grep Running > /dev/null 2>&1"; then
+      log_info "${RED}Failed to validate the POD status...${RESET}"
+      overall_status=1
+    fi
+  else
+    log_info "${RED}Failed to validate the required POD Replica (>0)...${RESET}"
+    overall_status=1
+  fi
 
   return $overall_status
 }
@@ -264,7 +324,6 @@ run_ci_tests() {
 ################
 
 # NOTE: To inspect created resources after a test run, comment out the teardown section in "trap"
-
 # Ensures teardown runs even if the script is interrupted (e.g., with Ctrl+C)
 # trap teardown_environment EXIT
 
@@ -272,7 +331,6 @@ validate_environment
 run_ci_tests
 final_status=$?
 
-echo
 if [ $final_status -eq 0 ]; then
   log_info "${GREEN}All CI validation tests passed successfully!${RESET}"
 elif [ $final_status -eq 1 ]; then
