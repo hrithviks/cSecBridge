@@ -61,20 +61,37 @@ def _set_log_err_context(excp):
 #######################################
 # Rate setter extention for Flask app #
 #######################################
-_redis_auth = f":{config.REDIS_PASSWORD}@" if config.REDIS_PASSWORD else ""
 _redis_scheme = "rediss://" if config.REDIS_SSL_ENABLED else "redis://"
 _redis_uri_for_limiter = (
-    f"{_redis_scheme}{_redis_auth}"
-    f"{config.REDIS_HOST}:{config.REDIS_PORT}/0"
+    f"{_redis_scheme}{config.REDIS_HOST}:{config.REDIS_PORT}/0"
 )
+
+_redis_limiter_storage_options = {
+    "socket_connect_timeout": 30
+}
+
+if config.REDIS_USER:
+    _redis_limiter_storage_options["username"] = config.REDIS_USER
+if config.REDIS_PASSWORD:
+    _redis_limiter_storage_options["password"] = config.REDIS_PASSWORD
+if config.REDIS_SSL_ENABLED:
+    _redis_limiter_storage_options["ssl"] = True
+    _redis_limiter_storage_options["ssl_ca_certs"] = config.REDIS_SSL_CA_CERT
 
 try:
     limiter = Limiter(
         get_remote_address,
         storage_uri=_redis_uri_for_limiter,
-        storage_options={"socket_connect_timeout": 30},
+        storage_options=_redis_limiter_storage_options,
         strategy="fixed-window",
     )
+except redis.exceptions.AuthenticationError as e:
+    log.error(
+        "Authentication error for rate limiter Redis.",
+        exc_info=True,
+        extra=_set_log_err_context(e)
+    )
+    raise ExtentionError
 except redis.exceptions.ConnectionError as e:
     log.error(
         "Connection error for rate limiter Redis.",

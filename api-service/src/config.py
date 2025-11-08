@@ -98,7 +98,7 @@ class _Config:
     @property
     def REDIS_PORT(self):
         return self._REDIS_PORT
-    
+
     @property
     def REDIS_USER(self):
         return self._REDIS_USER

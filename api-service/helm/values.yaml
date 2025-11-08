@@ -91,7 +91,7 @@ config:
   postgresDb: "csb_app_db"
   redisHost: "csb-redis-service"
   redisPort: 6379
-  redisUser: "csb_api_client"
+  redisUser: "csb-api-client"
 
   # SSL/TLS setting
   postgresSslEnabled: false

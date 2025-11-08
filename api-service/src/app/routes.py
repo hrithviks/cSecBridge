@@ -73,7 +73,7 @@ def _get_backend_data(data, correlation_id):
         "correlation_id": correlation_id,
         "account_id": data['account_id'],
         "target_cloud": data['target_cloud'],
-        "status": "PENDING",
+        "status": "queued",
         "received_at": datetime.now(timezone.utc).isoformat(),
         **data['context']
     }

@@ -110,6 +110,7 @@ def _handle_all_exceptions(e):
     }
     current_app.logger.error(
         'Unhandled system exception caught',
+        exc_info=True,
         extra={
             "error_type": type(e).__name__,
             "error_message": str(e),

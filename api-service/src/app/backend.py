@@ -49,7 +49,7 @@ _INSERT_TO_REQUESTS = '''INSERT INTO CSB_REQUESTS
 _INSERT_TO_REQUESTS_AUDIT = '''INSERT INTO CSB_REQUESTS_AUDIT
     (CORRELATION_ID,
     STATUS,
-    ERROR_TEXT,
+    AUDIT_LOG,
     AUDIT_TIMESTAMP)
     VALUES (%s, %s, %s, %s)'''
 
@@ -138,7 +138,7 @@ def create_new_request(db_conn, redis_conn, backend_data):
                     correlation_id,
                     backend_data['account_id'],
                     backend_data['principal'],
-                    backend_data['role'],
+                    backend_data['entitlement'],
                     backend_data['action'],
                     _INIT_STATUS,
                     backend_data['target_cloud'],

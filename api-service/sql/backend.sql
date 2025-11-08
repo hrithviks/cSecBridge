@@ -75,6 +75,10 @@ grant usage, select on sequence csb_app.csb_requests_audit_audit_id_seq to csb_a
 -- Row level security policies
 alter table csb_app.csb_requests enable row level security;
 
+-- For API-User
+create policy csb_api_user_insert_policy on csb_app.csb_requests for insert to csb_api_user with check (true);
+create policy csb_api_user_select_policy on csb_app.csb_requests for select to csb_api_user using (true);
+
 create policy csb_aws_worker_policy on csb_app.csb_requests for all to csb_aws_user using (cloud_provider = 'aws');
 create policy csb_azure_worker_policy on csb_app.csb_requests for all to csb_azure_user using (cloud_provider = 'azure');
 
