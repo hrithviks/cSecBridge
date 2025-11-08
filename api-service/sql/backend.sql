@@ -44,7 +44,7 @@ create table csb_app.csb_requests_audit (
 
 create table csb_app.csb_requests_ref (
     ref_serial_id bigserial primary key,
-    cloud_provider varchar(50) not rull,
+    cloud_provider varchar(50) not null,
     correlation_id uuid not null references csb_requests(correlation_id) on delete cascade,
     ref_id varchar(255) not null,
     ref_upd_time_stamp timestamptz not null default now()
@@ -75,8 +75,8 @@ grant usage, select on sequence csb_app.csb_requests_audit_audit_id_seq to csb_a
 -- Row level security policies
 alter table csb_app.csb_requests enable row level security;
 
-create policy csb_aws_worker_policy on csb_app.csb_requests for select, update to csb_aws_user using (cloud_provider = 'aws');
-create policy csb_azure_worker_policy on csb_app.csb_requests for select, update to csb_azure_user using (cloud_provider = 'azure');
+create policy csb_aws_worker_policy on csb_app.csb_requests for all to csb_aws_user using (cloud_provider = 'aws');
+create policy csb_azure_worker_policy on csb_app.csb_requests for all to csb_azure_user using (cloud_provider = 'azure');
 
 /*
 Place-holder for additional row-level security policy,
@@ -88,7 +88,7 @@ corresponds to the scope of the provider.
 */
 
 -- Grant access to AWS Worker user.
-grant select, insert, update on table csb_requests to csb_aws_user;
+grant select, update on table csb_requests to csb_aws_user;
 grant select, insert on table csb_requests_audit to csb_aws_user;
 grant select, insert on table csb_requests_ref to csb_aws_user;
 
