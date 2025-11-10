@@ -71,6 +71,12 @@ grant select, insert on table csb_app.csb_requests_audit to csb_api_user;
 
 -- The audit_id is auto-generating, so the user needs usage permission on the sequence.
 grant usage, select on sequence csb_app.csb_requests_audit_audit_id_seq to csb_api_user;
+grant usage, select on sequence csb_app.csb_requests_audit_audit_id_seq to csb_aws_user;
+grant usage, select on sequence csb_app.csb_requests_audit_audit_id_seq to csb_azure_user;
+
+-- The ref_serial_id is auto-generating, so the user needs usage permission on the sequence.
+grant usage, select on sequence csb_app.csb_requests_ref_ref_serial_id_seq to csb_aws_user;
+grant usage, select on sequence csb_app.csb_requests_ref_ref_serial_id_seq to csb_azure_user;
 
 -- Row level security policies
 alter table csb_app.csb_requests enable row level security;

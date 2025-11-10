@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "CSecBridge Access Request",
-    "description": "Schema for a single access request to a cloud provider.",
+    "description": "Schema for a single access request to an external platform.",
     "type": "object",
     "properties": {
         "client_request_id": {
@@ -10,12 +10,13 @@
             "minLength": 1
         },
         "target_cloud": {
-            "description": "The target cloud provider for the operation.",
+            "description": "The external target platform.",
             "type": "string",
             "enum": [
                 "aws",
                 "azure",
-                "gcp"
+                "gcp",
+                "hashicorp"
             ]
         },
         "account_id": {
@@ -29,8 +30,11 @@
             "properties": {
                 "principal": {
                     "description": "The user or service principal requesting access.",
-                    "type": "string",
-                    "format": "email"
+                    "type": "string"
+                },
+                "principal_type": {
+                    "description": "The type of IAM entity, user or role",
+                    "type": "string"
                 },
                 "action": {
                     "description": "The action to be performed.",
@@ -40,10 +44,18 @@
                         "remove"
                     ]
                 },
-                "role": {
+                "entitlement": {
                     "description": "The name of the role to be added or removed.",
                     "type": "string",
                     "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "entitlement_type": {
+                    "description": "The type of entitlement - default or custom",
+                    "type": "string",
+                    "enum": [
+                        "default",
+                        "custom"
+                    ]
                 },
                 "duration_minutes": {
                     "description": "The duration for which the access is granted, in minutes. Optional for 'remove' actions.",
@@ -53,8 +65,10 @@
             },
             "required": [
                 "principal",
+                "principal_type",
                 "action",
-                "entitlement"
+                "entitlement",
+                "entitlement_type"
             ]
         }
     },
