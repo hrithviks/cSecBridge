@@ -88,7 +88,7 @@ def _get_db_connection():
     except OperationalError as e:
         log.error(
             "PostgreSQL pool connection failed.",
-            extra=_get_error_log_extra(e, "SYSTEM-DB-INIT")
+            extra=get_error_log_extra(e, "SYSTEM-DB-INIT")
         )
         raise ExtensionInitError("Failed to get a database connection.") from e
 
@@ -145,7 +145,7 @@ def update_job_status_on_db(correlation_id,
             )
 
             # If the status is success, insert into 'csb_requests_ref'
-            if status == "SUCCESS" and aws_ref and cloud_provider:
+            if status == "success" and aws_ref and cloud_provider:
                 log.debug(
                     "Executing INSERT on csb_requests_ref.",
                     extra=log_extra
@@ -165,7 +165,7 @@ def update_job_status_on_db(correlation_id,
     except OperationalError as e:
         log.error(
             'Postgresql DB operation failed. Transaction will be rolled back.',
-            extra=_get_error_log_extra(e, 'SYSTEM-DB-UPDATE')
+            extra=get_error_log_extra(e, 'SYSTEM-DB-UPDATE')
         )
         if conn:
             conn.rollback()
@@ -211,7 +211,7 @@ def validate_job_status_on_db(correlation_id, log_extra):
                 return False
 
             status = result[0]
-            if status != 'PENDING':
+            if status != 'queued':
                 log.warning(
                     f'Job validation SKIPPED: Job is a duplicate '
                     f'(status is "{status}"). Discarding.',
@@ -226,7 +226,7 @@ def validate_job_status_on_db(correlation_id, log_extra):
     except OperationalError as e:
         log.warning(
             'PostgreSQL DB validation query failed.',
-            extra=_get_error_log_extra(e, log_extra.get("context"))
+            extra=get_error_log_extra(e, log_extra.get("context"))
         )
         raise DBError('Postgresql DB Operation Error.') from e
     finally:
@@ -257,7 +257,7 @@ def get_job_from_redis_queue(time_out=0):
     except ConnectionError as e:
         log.error(
             "Redis BRPOP failed. Connection may be down.",
-            extra=_get_error_log_extra(e, "SYSTEM-QUEUE-READ")
+            extra=get_error_log_extra(e, "SYSTEM-QUEUE-READ")
         )
         raise RedisError("Redis connection error during BRPOP.") from e
 

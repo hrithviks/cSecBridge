@@ -30,7 +30,17 @@ class RedisError(BackendServerError):
 
 class AWSWorkerError(BackendServerError):
     """Raised for errors specific to the AWS API or business logic failures."""
-    pass
+    
+    def __init__(self, message, is_transient=False):
+        """
+        Initializes the exception with a message and a transient flag.
+
+        Args:
+            message (str): The error message.
+            is_transient (bool): Flag to indicate if the error is transient.
+        """
+        super().__init__(message)
+        self.is_transient = is_transient
 
 class IAMError(BackendServerError):
     """Raised for errors related to IAM action"""

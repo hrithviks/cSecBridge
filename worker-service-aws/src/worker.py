@@ -56,7 +56,7 @@ try:
     )
     # Import the logging helper from the new helpers module
     from app.helpers import get_error_log_extra
-except (ExtensionInitError, ConfigLoadError, ImportError) as e:
+except Exception as e:
     log.critical(
         "FATAL: Failed to initialize worker application package.",
         exc_info=True,
@@ -94,7 +94,7 @@ def process_job(job_payload):
         # Lock the job and set status to IN_PROGRESS.
         update_job_status_on_db(
             correlation_id,
-            "IN_PROGRESS",
+            "in_progress",
             "AWS Worker processing started."
         )
         log.info("Job locked and state set to IN_PROGRESS.", extra=log_extra)
@@ -106,7 +106,7 @@ def process_job(job_payload):
         # Handle post-processing.
         update_job_status_on_db(
             correlation_id,
-            "SUCCESS",
+            "success",
             "AWS operation successful",
             aws_ref=aws_request_id
         )
@@ -124,7 +124,7 @@ def process_job(job_payload):
             )
             update_job_status_on_db(
                 correlation_id,
-                'PENDING',  # Revert status to PENDING
+                'queued',  # Revert status to PENDING
                 f"Transient error, re-queuing job. Error: {err}"
             )
             push_job_to_redis_queue(job_payload)
@@ -136,7 +136,7 @@ def process_job(job_payload):
             )
             update_job_status_on_db(
                 correlation_id,
-                "FAILED",
+                "failed",
                 f"Non-transient error, discarding job. Error: {err}"
             )
 
@@ -147,19 +147,25 @@ def process_job(job_payload):
             extra=get_error_log_extra(e, "SYSTEM-EXEC")
         )
         # Job is still 'IN_PROGRESS' in DB, so just re-queue.
+        # Additional option for re-queue to insert a retry count on payload,
+        # and stop processing after fixed attempts to process.
         push_job_to_redis_queue(job_payload)
 
     # Handled unexpected errors - assuming transient.
     except Exception as e:
         log.error(
             f"Critical unhandled error, re-queuing job.",
-            extra=get_error_log_extra(e, "SYSTEM-EXEC")
+            extra=get_error_log_extra(e, "SYSTEM-EXEC"),
+            exc_info=True
         )
         update_job_status_on_db(
             correlation_id,
-            'PENDING',  # Revert status
+            'queued',  # Revert status
             f"Unhandled exception, re-queuing."
         )
+
+        # Additional option for re-queue to insert a retry count on payload,
+        # and stop processing after fixed attempts to process.
         push_job_to_redis_queue(job_payload)
 
 
@@ -196,8 +202,8 @@ def run_worker():
             # Get job payload from queue
             item = get_job_from_redis_queue(time_out=0)
             if item:
-                _, payload_bytes = item
-                job_payload = json.loads(payload_bytes.decode('utf-8'))
+                _, redis_data = item
+                job_payload = json.loads(redis_data)
 
                 log.info(
                     "Job received from queue.",
@@ -251,3 +257,17 @@ def app(environ, start_response):
     # infinite loop. It's here to satisfy the WSGI interface.
     start_response("200 OK", [('Content-Type', 'text/plain')])
     return [b"Worker process has completed."]
+
+
+if __name__ == '__main__':
+    """
+    Local testing of AWS worker service
+    """
+
+    log.warning('Running in test mode. This is for local testing only.',
+                extra={"context": "SYSTEM-TEST"})
+    try:
+        run_worker()
+    except KeyboardInterrupt:
+        log.warning('Exiting Test...')
+    exit(0)

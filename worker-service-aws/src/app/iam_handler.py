@@ -148,8 +148,8 @@ def process_iam_action(job_payload):
         iam_actn = job_payload['action']
         iam_name = job_payload['principal']
         iam_type = job_payload['principal_type']
-        iam_policy = job_payload['policy']
-        iam_policy_type = job_payload['policy_type']
+        iam_policy = job_payload['entitlement']
+        iam_policy_type = job_payload['entitlement_type']
         account_id = job_payload['account_id']
         correlation_id = job_payload['correlation_id']
 

@@ -12,8 +12,8 @@ import logging
 
 # Setup a package-level logger
 log = logging.getLogger(__name__)
-log.debug('Initializing AWS worker application',
-          extra={"context": "AWS-WORKER-CLIENT-INIT"})
+log.debug('Initializing AWS worker application.',
+          extra={"context": "AWS-WORKER-APP-INIT"})
 
 # Expose all public error classes
 from errors import (
@@ -30,7 +30,8 @@ from errors import (
 try:
     from .config import config
 except ConfigLoadError as e:
-    log.error('Error loading application configuration.')
+    log.error('Error loading application configuration.',
+              extra={"context": "AWS-WORKER-APP-INIT"})
     raise
 
 # Initialize and expose the client singletons
@@ -42,11 +43,11 @@ try:
     )
 except ExtensionInitError as e:
     log.critical(
-        "Error initializing backend clients",
+        "Error initializing backend clients.",
         extra = {
             "error_type": type(e).__name__,
             "error_message": str(e),
-            "context": "AWS-WORKER-CLIENT-INIT"
+            "context": "AWS-WORKER-APP-INIT"
         }
     )
     raise
@@ -85,5 +86,5 @@ __all__ = [
     "IAMError"
 ]
 
-log.debug('Application package initialized',
-          extra={"context": "AWS-WORKER-CLIENT-INIT"})
+log.debug('Application package initialized.',
+          extra={"context": "AWS-WORKER-APP-INIT"})
