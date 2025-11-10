@@ -10,10 +10,15 @@ It initializes and exposes the core components of the package
 
 import logging
 
+# A constant, shared context for all logs originating from this module
+_LOG_CONTEXT = {
+    "context": "AWS-WORKER-APP-INIT"
+}
+
 # Setup a package-level logger
 log = logging.getLogger(__name__)
 log.debug('Initializing AWS worker application.',
-          extra={"context": "AWS-WORKER-APP-INIT"})
+          extra=_LOG_CONTEXT)
 
 # Expose all public error classes
 from errors import (
@@ -23,15 +28,18 @@ from errors import (
     DBError,
     RedisError,
     AWSWorkerError,
-    IAMError
+    IAMError,
+    BackendDataError
 )
 
 # Initialize and expose the config singleton
 try:
     from .config import config
 except ConfigLoadError as e:
-    log.error('Error loading application configuration.',
-              extra={"context": "AWS-WORKER-APP-INIT"})
+    log.error(
+        'Error loading application configuration.',
+        extra=get_error_log_extra(e, _LOG_CONTEXT)
+    )
     raise
 
 # Initialize and expose the client singletons
@@ -43,12 +51,8 @@ try:
     )
 except ExtensionInitError as e:
     log.critical(
-        "Error initializing backend clients.",
-        extra = {
-            "error_type": type(e).__name__,
-            "error_message": str(e),
-            "context": "AWS-WORKER-APP-INIT"
-        }
+        'Error initializing backend clients.',
+        extra=get_error_log_extra(e, _LOG_CONTEXT)
     )
     raise
 
@@ -60,6 +64,7 @@ from .backend import (
     validate_job_status_on_db,
     update_job_status_on_db
 )
+from .helpers import get_error_log_extra
 
 # Define the public APIs for the package
 __all__ = [
@@ -83,8 +88,12 @@ __all__ = [
     "DBError",
     "RedisError",
     "AWSWorkerError",
-    "IAMError"
+    "IAMError",
+    "BackendDataError",
+
+    # Helpers
+    "get_error_log_extra"
 ]
 
 log.debug('Application package initialized.',
-          extra={"context": "AWS-WORKER-APP-INIT"})
+          extra=_LOG_CONTEXT)

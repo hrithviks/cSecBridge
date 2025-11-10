@@ -15,14 +15,19 @@ import boto3
 from .clients import aws_session as base_aws_session
 from botocore.exceptions import ClientError as AWSClientError
 from errors import AWSWorkerError, IAMError
+from .helpers import get_error_log_extra
 
 # Define what this module exposes to other parts of the application
 __all__ = ["process_iam_action"]
 
 # A constant, shared context for all logs originating from this module
 _MODULE_LOG_CONTEXT = {
-    "context": "AWS-IAM-Handler"
+    "context": "AWS-WORKER-IAM"
 }
+
+# IAM Role Definitions
+_IAM_TARGET_ROLE="cSecBridgeIAMHandlerRole"
+_IAM_TARGET_ROLE_SESSION="cSecBridgeWorkerSession"
 
 # Setup a module-level logger
 log = logging.getLogger(__name__)
@@ -51,22 +56,24 @@ def _get_target_account_session(account_id, correlation_id):
 
     log_extra = {
         **_MODULE_LOG_CONTEXT,
-        'correlation_id': correlation_id,
-        'account_id': account_id
+        "correlation_id": correlation_id,
+        "account_id": account_id,
+        "operation": "sts_assume_role",
+        "iam_role": _IAM_TARGET_ROLE,
+        "iam_role_session": _IAM_TARGET_ROLE_SESSION
     }
-    log.info(f"Attempting to assume role in target account \
-             {account_id}", extra=log_extra)
+    log.debug(f"Attempting to assume role in target account", extra=log_extra)
 
     # This is the central STS client from the base AWS session.
     sts_client = base_aws_session.client('sts')
     
     # Pre-created role on each account - to be assumed for the IAM operation.
-    role_to_assume = f"arn:aws:iam::{account_id}:role/cSecBridgeIAMHandlerRole"
+    role_to_assume = f"arn:aws:iam::{account_id}:role/{_IAM_TARGET_ROLE}"
     
     try:
         response = sts_client.assume_role(
             RoleArn=role_to_assume,
-            RoleSessionName="cSecBridgeWorkerSession"
+            RoleSessionName=_IAM_TARGET_ROLE_SESSION
         )
         
         temp_credentials = response['Credentials']
@@ -77,16 +84,44 @@ def _get_target_account_session(account_id, correlation_id):
             aws_secret_access_key=temp_credentials['SecretAccessKey'],
             aws_session_token=temp_credentials['SessionToken']
         )
-        log.info(f"Successfully assumed role in target account \
-                 {account_id}", extra=log_extra)
+        log.debug(
+            "Successfully assumed role in target account.",
+            extra=log_extra
+        )
         return target_session
 
-    # Non-transient critical configuration error.
+    # Critical configuration error. (non-transient)
     except AWSClientError as e:
-        log.error(f"Failed to assume role: {e}", extra=log_extra)
-        raise AWSWorkerError(f"STS AssumeRole failed for account {account_id}.\
-                              Check permissions.", is_transient=False) from e
+        log.error(
+            "Failed to assume role.",
+            extra=get_error_log_extra(e, log_extra)
+        )
+        raise AWSWorkerError(
+            "STS AssumeRole failed due to boto3 client error.",
+            is_transient=False
+        ) from e
     
+    # Malformed response from boto3 invocation. (non-transient)
+    except KeyError as e:
+        log.error(
+            'Failed to get temporary credentials.',
+            extra=get_error_log_extra(e, log_extra)
+        )
+        raise AWSWorkerError(
+            "STS failed to get temporary credentials.",
+            is_transient=False
+        ) from e
+    
+    # Unhandled boto3 errors for STS. (non-transient)
+    except Exception as e:
+        log.error(
+            'Unhandled exception during STS AssumeRole operation.',
+            extra=get_error_log_extra(e, log_extra)
+        )
+        raise AWSWorkerError(
+            "Unhandled exception during STS AssumeRole operation.",
+            is_transient=False
+        ) from e
 
 def _get_iam_policy_arn(account_id, policy_name, policy_type):
     """
@@ -156,16 +191,17 @@ def process_iam_action(job_payload):
         # Create a log context for all subsequent logs
         log_extra = {
             **_MODULE_LOG_CONTEXT,
-            'correlation_id': correlation_id,
-            'account_id': account_id,
-            'principal': iam_name,
-            'action': iam_actn
+            "correlation_id": correlation_id,
+            "account_id": account_id,
+            "principal": iam_name,
+            "action": iam_actn,
+            "operation": "iam_handler"
         }
     except KeyError as e:
         raise AWSWorkerError(
             f"Job payload missing required field {e}",
             is_transient=False
-        )
+        ) from e
     
     # Stage 2: Process the request
     try:
@@ -174,7 +210,7 @@ def process_iam_action(job_payload):
                                                          correlation_id)
         iam_resource = aws_target_session.resource('iam')
 
-        # Determine if the action is on a User or a role
+        # Determine if the action is on a user or a role
         if iam_type == "User":
             iam_entity = iam_resource.User(iam_name)
         elif iam_type == "Role":
@@ -182,10 +218,7 @@ def process_iam_action(job_payload):
         else: # Neither a user nor a role
             raise IAMError(f"Unsupported IAM entity type {iam_type}.")
         
-        log.info(
-            f"Processing action '{iam_actn}' for principal '{iam_name}'",
-            extra=log_extra
-        )
+        log.debug("Processing IAM action.", extra=log_extra)
 
         # Construct the full Policy ARN to be attached/detached
         iam_policy_arn = _get_iam_policy_arn(
@@ -202,8 +235,7 @@ def process_iam_action(job_payload):
         else: # Invalid action
             raise IAMError(f"Unsupported action: {iam_actn}.")
 
-        log.info(f"Successfully processed the IAM action '{iam_actn}' \
-                 for principal {iam_name}")
+        log.debug("IAM action processed.", extra=log_extra)
         
         # Return a success dictionary with the AWS audit ID
         return {
@@ -211,9 +243,12 @@ def process_iam_action(job_payload):
             "aws_request_id": _get_iam_request_id(resp)
         }
     
-    # Runtime errors during the internal module opertions.
+    # Runtime errors during the internal module operations.
     except (IAMError, ValueError) as e:
-        log.error(f"Non-transient logic error: {e}", extra=log_extra, exc_info=True)
+        log.error(
+            "IAM processing error",
+            extra=get_error_log_extra(e, log_extra)
+        )
         raise AWSWorkerError(str(e), is_transient=False) from e
     
     # AWS API Error during the IAM operation.
@@ -221,13 +256,10 @@ def process_iam_action(job_payload):
 
         # Get the specific Boto3/AWS API error
         error_code = e.response.get('Error', {}).get('Code')
-        log.error(
-            f"AWS API Error ({error_code}): {e}",
-            extra=log_extra,
-            exc_info=True
-        )
+        log.error("AWS API error", extra=get_error_log_extra(e, log_extra))
         
-        # Distinguish between permanent and transient failures for the job.
+        # Distinguish between non-transient (retry not possible)
+        # and transient (retry possible) failures for the job.
         if error_code in ['NoSuchEntity', 'InvalidInput', 'AccessDenied']:
             raise AWSWorkerError(
                 f"Non-transient failure: {error_code}",
@@ -241,7 +273,14 @@ def process_iam_action(job_payload):
     
     # All unhandled exceptions.
     except Exception as e:
-        log.error(f"Unexpected error during IAM operation: {e}", extra=log_extra, exc_info=True)
-        # Assume unexpected errors are transient and should be retried.
-        raise AWSWorkerError(f"Unexpected handler error: {e}", is_transient=True) from e
+        log.error(
+            "Unexpected error during IAM operation",
+            extra=get_error_log_extra(e, log_extra))
+        log.error(f"Unexpected error during IAM operation: {e}", extra=log_extra)
+
+        # Unhandled errors are non-transient, and should be evaluated 
+        # manually in a separate error queue.
+        raise AWSWorkerError(
+            f"Unexpected handler error: {e}", is_transient=False
+        ) from e
     

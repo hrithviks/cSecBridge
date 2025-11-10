@@ -20,8 +20,22 @@ class BackendServerError(Exception):
     """Base class for errors originating from downstream services."""
     pass
 
+class BackendDataError(Exception):
+    """Raised for errors specific to the backend data operations."""
+    
+    def __init__(self, message, is_transient=False):
+        """
+        Initializes the exception with a message and a transient flag.
+
+        Args:
+            message (str): The error message.
+            is_transient (bool): Flag to indicate if the error is transient.
+        """
+        super().__init__(message)
+        self.is_transient = is_transient
+
 class DBError(BackendServerError):
-    """Raised for specific errors related to database operations"""
+    """Raised for specific errors related to database service operations"""
     pass
 
 class RedisError(BackendServerError):

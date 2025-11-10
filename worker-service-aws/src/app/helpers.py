@@ -17,7 +17,7 @@ def get_error_log_extra(err, context):
         dict: A dictionary formatted for the JSON logger.
     """
     return {
-        "context": context,
+        **context,
         "error_type": type(err).__name__,
         "error_message": str(err)
     }

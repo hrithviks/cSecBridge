@@ -10,12 +10,12 @@ All database operations within a single function are transactional.
 import logging
 import json
 from datetime import datetime, timezone
-from psycopg2 import OperationalError
+from psycopg2 import OperationalError, ProgrammingError, DataError
 from redis.exceptions import ConnectionError
 
 # Import dependent modules using relative and absolute imports
 from .clients import redis_client, db_pool
-from errors import DBError, RedisError, ExtensionInitError
+from errors import DBError, RedisError, ExtensionInitError, BackendDataError
 from .config import config
 from .helpers import get_error_log_extra
 
@@ -50,23 +50,10 @@ _SQL_INSERT_REF = """
     values (%s, %s, %s);
 """
 
-
-def get_error_log_extra(err, context):
-    """
-    Creates a standard 'extra' dict for logging exceptions.
-
-    Args:
-        err (Exception): The exception that occurred.
-        context (str): The context string (e.g., 'SYSTEM-DB-UPDATE').
-
-    Returns:
-        dict: A dictionary formatted for the JSON logger.
-    """
-    return {
-        "context": context,
-        "error_type": type(err).__name__,
-        "error_message": str(err)
-    }
+# A constant, shared context for all logs originating from this module
+_LOG_CONTEXT = {
+    "context": "AWS-WORKER-BACKEND"
+}
 
 ######################
 # Database Functions #
@@ -82,15 +69,8 @@ def _get_db_connection():
     Returns:
         psycopg2.connection: A connection object from the pool.
     """
-
-    try:
-        return db_pool.getconn()
-    except OperationalError as e:
-        log.error(
-            "PostgreSQL pool connection failed.",
-            extra=get_error_log_extra(e, "SYSTEM-DB-INIT")
-        )
-        raise ExtensionInitError("Failed to get a database connection.") from e
+    
+    return db_pool.getconn()
 
 
 def update_job_status_on_db(correlation_id,
@@ -114,8 +94,10 @@ def update_job_status_on_db(correlation_id,
     """
 
     log_extra = {
-        'context': 'SYSTEM-DB-UPDATE',
-        'correlation_id': correlation_id
+        **_LOG_CONTEXT,
+        "service": "PostgreSQL",
+        "operation": "update_status",
+        "correlation_id": correlation_id
     }
     conn = None
     try:
@@ -126,8 +108,11 @@ def update_job_status_on_db(correlation_id,
 
             # Update the main 'csb_requests' table
             log.debug(
-                "Executing UPDATE on csb_requests.",
-                extra=log_extra
+                "Executing database update.",
+                extra={
+                    **log_extra,
+                    "table_name": "csb_requests"
+                }
             )
             cur.execute(
                 _SQL_UPDATE_REQUESTS,
@@ -136,8 +121,11 @@ def update_job_status_on_db(correlation_id,
 
             # Insert into the 'csb_requests_audit' table
             log.debug(
-                "Executing INSERT on csb_requests_audit.",
-                extra=log_extra
+                "Executing database insert.",
+                extra={
+                    **log_extra,
+                    "table_name": "csb_requests_audit"
+                }
             )
             cur.execute(
                 _SQL_INSERT_AUDIT,
@@ -147,8 +135,11 @@ def update_job_status_on_db(correlation_id,
             # If the status is success, insert into 'csb_requests_ref'
             if status == "success" and aws_ref and cloud_provider:
                 log.debug(
-                    "Executing INSERT on csb_requests_ref.",
-                    extra=log_extra
+                    "Executing database insert",
+                    extra={
+                        **log_extra,
+                        "table_name": "csb_requests_ref"
+                    }
                 )
                 cur.execute(
                     _SQL_INSERT_REF,
@@ -158,32 +149,40 @@ def update_job_status_on_db(correlation_id,
         # Commit all 3 operations at once.
         conn.commit()
         log.info(
-            f"Database finalized for status '{status}'.",
-            extra=log_extra
+            f"Database operations completed.",
+            extra={
+                **log_extra,
+                "status": status
+            }
         )
-
+    # Database connection errors
     except OperationalError as e:
         log.error(
             'Postgresql DB operation failed. Transaction will be rolled back.',
-            extra=get_error_log_extra(e, 'SYSTEM-DB-UPDATE')
+            extra=get_error_log_extra(e,log_extra)
         )
         if conn:
             conn.rollback()
-        raise DBError('Postgresql DB Operation Error.') from e
-
+        raise DBError('Postgresql DB operation error.') from e
+    # Database query errors (eg. Insufficient privileges, Data mismatches etc.)
+    except (ProgrammingError, DataError) as e:
+        log.warning(
+            'PostgreSQL query execution error.',
+            extra=get_error_log_extra(e,log_extra)
+        )
+        raise BackendDataError('Postgresql database query error.') from e
     finally:
         if conn:
             db_pool.putconn(conn)
 
 
-def validate_job_status_on_db(correlation_id, log_extra):
+def validate_job_status_on_db(correlation_id):
     """
     Checks if a job is legitimate by verifying its correlation_id
     exists in the database and is in a 'PENDING' state.
 
     Args:
         correlation_id (str): The ID of the job to check.
-        log_extra (dict): The logging context.
 
     Raises:
         DBError: If the database connection or query fails.
@@ -192,43 +191,74 @@ def validate_job_status_on_db(correlation_id, log_extra):
         bool: True if the job is valid and PENDING, False otherwise.
     """
 
-    log.info("Validating job legitimacy against database.", extra=log_extra)
-    conn = None
-    if not (conn := _get_db_connection()):
-        raise ExtensionInitError("Failed to get a database connection.")
+    log_extra = {
+        **_LOG_CONTEXT,
+        "service": "PostgreSQL",
+        "operation": "validate_status",
+        "correlation_id": correlation_id
+    }
+    log.debug("Validating job legitimacy", extra=log_extra)
 
     try:
+        # Assign and check the status of connection obtained from pool
+        conn = None
+        if not (conn := _get_db_connection()):
+            raise ExtensionInitError("Failed to get a database connection.")
+
         with conn.cursor() as cur:
+            log.debug(
+                    "Executing database select.",
+                    extra={
+                        **log_extra,
+                        "table_name": "csb_requests"
+                    }
+                )
             cur.execute(_SQL_SELECT_STATUS, (correlation_id,))
             result = cur.fetchone()
 
+            # If there are no valid rows in the database
             if not result:
                 log.warning(
-                    f'Job validation FAILED: Correlation ID {correlation_id} '
-                    'not found in database. Discarding unauthorized job.',
-                    extra=log_extra
+                    'No data found in database. Validation failed.',
+                    extra={
+                        **log_extra,
+                        "table_name": "csb_requests"
+                    }
                 )
                 return False
 
+            # Check the result - should be "queued"
             status = result[0]
             if status != 'queued':
                 log.warning(
-                    f'Job validation SKIPPED: Job is a duplicate '
-                    f'(status is "{status}"). Discarding.',
-                    extra=log_extra
+                    'Unexpected status on database. Validation failed.',
+                    extra={
+                        **log_extra,
+                        "table_name": "csb_requests",
+                        "status": status
+                    }
                 )
                 return False
 
-        log.info('Job validation successful. Proceeding to lock.',
+        log.debug('Job validation successful',
                  extra=log_extra)
         return True
 
+    # Database connection errors
     except OperationalError as e:
         log.warning(
-            'PostgreSQL DB validation query failed.',
-            extra=get_error_log_extra(e, log_extra.get("context"))
+            'PostgreSQL database service operation error.',
+            extra=get_error_log_extra(e, log_extra)
         )
-        raise DBError('Postgresql DB Operation Error.') from e
+        raise DBError('Postgresql database service operation error.') from e
+
+    # Database query errors (eg. Insufficient privileges, Data mismatches etc.)
+    except (ProgrammingError, DataError) as e:
+        log.warning(
+            'PostgreSQL query execution error.',
+            extra=get_error_log_extra(e, log_extra)
+        )
+        raise BackendDataError('Postgresql database query error.') from e
     finally:
         if conn:
             db_pool.putconn(conn)
@@ -237,11 +267,12 @@ def validate_job_status_on_db(correlation_id, log_extra):
 # Redis Functions #
 ###################
 
-def get_job_from_redis_queue(time_out=0):
+def get_job_from_redis_queue(queue_name, time_out=0):
     """
     Gets a single job from the AWS Redis queue using a blocking pop.
 
     Args:
+        queue_name (str): The name of the redis queue object.
         time_out (int, optional): The block timeout. 0 blocks indefinitely.
 
     Raises:
@@ -251,36 +282,47 @@ def get_job_from_redis_queue(time_out=0):
         tuple: A (queue_name, job_payload_bytes) tuple or None if timeout.
     """
 
+    log_extra = {
+        **_LOG_CONTEXT,
+        "service": "Redis",
+        "operation": "read_queue",
+        "queue_name": queue_name
+    }
+
     try:
+        log.debug("Executing Redis BRPOP.", extra=log_extra)
+
         # Blocking Right Pop: Waits for a job from the tail of the list
-        return redis_client.brpop([config.REDIS_QUEUE_AWS], timeout=time_out)
+        return redis_client.brpop([queue_name], timeout=time_out)
     except ConnectionError as e:
-        log.error(
-            "Redis BRPOP failed. Connection may be down.",
-            extra=get_error_log_extra(e, "SYSTEM-QUEUE-READ")
-        )
+        log.error("BRPOP failed.", extra=get_error_log_extra(e, log_extra))
         raise RedisError("Redis connection error during BRPOP.") from e
 
 
-def push_job_to_redis_queue(job_payload):
+def push_job_to_redis_queue(queue_name, job_payload):
     """
     Pushes a failed job back to the *head* of the queue for immediate retry.
 
     Args:
+        queue_name (str): The name of the redis queue object.
         job_payload (dict): The job payload to re-queue.
 
     Raises:
         RedisError: If the connection to Redis fails.
     """
 
-    correlation_id = job_payload.get('correlation_id', 'unknown')
-    log_extra = {'context': 'SYSTEM-JOB-RETRY', 'correlation_id': correlation_id}
+    log_extra = {
+        **_LOG_CONTEXT,
+        "service": "Redis",
+        "operation": "write_queue",
+        "queue_name": queue_name,
+        "correlation_id": job_payload.get('correlation_id')
+    }
+
     try:
-        redis_client.lpush(config.REDIS_QUEUE_AWS, json.dumps(job_payload))
-        log.info("Job successfully re-queued for retry.", extra=log_extra)
+        log.debug("Executing Redis LPUSH.", extra=log_extra)
+        redis_client.lpush(queue_name, json.dumps(job_payload))
+        log.debug("Job successfully re-queued for retry.", extra=log_extra)
     except ConnectionError as e:
-        log.critical(
-            "FATAL: Failed to re-queue job. Job may be lost.",
-            exc_info=True, extra=log_extra
-        )
+        log.critical("LPUSH failed.", extra=get_error_log_extra(e, log_extra))
         raise RedisError("Redis connection error during LPUSH.") from e

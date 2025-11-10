@@ -17,10 +17,11 @@ import redis
 from psycopg2 import pool, OperationalError
 from .config import config
 from errors import ExtensionInitError
-
+from .helpers import get_error_log_extra
+ 
 # A constant, shared context for all logs originating from this module
 _LOG_CONTEXT = {
-    "context": "CLIENT-INIT"
+    "context": "AWS-WORKER-CLIENT-INIT"
 }
 
 # Define the public API of this module.
@@ -46,8 +47,16 @@ def _init_redis_client():
     """
 
     log_extra = {**_LOG_CONTEXT, "service": "Redis"}
-    log.info("Initializing Redis client...", extra=log_extra)
     try:
+        log.debug(
+            "Initializing Redis client...",
+            extra={
+                **log_extra,
+                "redis_host": config.REDIS_HOST,
+                "redis_port": config.REDIS_PORT,
+                "redis_user": config.REDIS_USERNAME
+            }
+        )
         redis_conn_params = {
             "host": config.REDIS_HOST,
             "port": config.REDIS_PORT,
@@ -59,16 +68,22 @@ def _init_redis_client():
         }
         client = redis.Redis(**redis_conn_params)
         client.ping()
-        log.info("Redis client connected and ping successful.", extra=log_extra)
+        log.debug(
+            "Redis client connected and ping successful.",
+            extra=log_extra
+        )
         return client
     except redis.exceptions.ConnectionError as e:
-        log.error("Redis client connection failed.", extra=log_extra)
+        log.error(
+            "Redis client connection failed.",
+            extra=get_error_log_extra(e,log_extra)
+        )
         # Re-raise as our custom exception for the entry point to catch
-        raise ExtensionInitError(f"Redis connection error: {e}") from e
+        raise ExtensionInitError(f"Redis connection error") from e
     except Exception as e:
         log.error(
-            f"An unhandled exception occurred during Redis client init: {e}",
-            extra=log_extra
+            "Unhandled Redis client error.",
+            extra=get_error_log_extra(e,log_extra)
         )
         raise ExtensionInitError("Unhandled Redis init error") from e
 
@@ -85,8 +100,17 @@ def _init_db_pool():
     """
 
     log_extra = {**_LOG_CONTEXT, "service": "PostgreSQL"}
-    log.info("Initializing PostgreSQL connection pool...", extra=log_extra)
     try:
+        log.debug(
+            "Initializing PostgreSQL connection pool...",
+            extra={
+                **log_extra,
+                "db_name": config.DB_NAME,
+                "db_host": config.DB_HOST,
+                "db_user": config.DB_USER,
+                "db_port": config.DB_PORT
+            }
+        )
         db_pool_instance = pool.ThreadedConnectionPool(
             1,  # minconn
             config.DB_POOL_MAX_CONN,  # maxconn
@@ -95,23 +119,27 @@ def _init_db_pool():
             user=config.DB_USER,
             password=config.DB_PASSWORD,
             dbname=config.DB_NAME
-            # Add SSL/TLS options here if needed
+            # Placeholder for SSL/TLS options
         )
+
         # Test the pool by getting and returning a connection
         conn = db_pool_instance.getconn()
         db_pool_instance.putconn(conn)
-        log.info(
+        log.debug(
             "PostgreSQL connection pool created and tested.",
             extra=log_extra
         )
         return db_pool_instance
     except OperationalError as e:
-        log.error("Database connection pool creation failed.", extra=log_extra)
-        raise ExtensionInitError(f"Database connection error: {e}") from e
+        log.error(
+            "Database connection pool creation failed.",
+            extra=get_error_log_extra(e,log_extra)
+        )
+        raise ExtensionInitError(f"Database connection error") from e
     except Exception as e:
         log.error(
-            f"An unhandled exception occurred during DB pool init: {e}",
-            extra=log_extra
+            "Unhandled PostgreSQL init error",
+            extra=get_error_log_extra(e,log_extra)
         )
         raise ExtensionInitError("Unhandled PostgreSQL init error") from e
 
@@ -128,8 +156,11 @@ def _init_aws_session():
     """
 
     log_extra = {**_LOG_CONTEXT, "service": "AWS-STS"}
-    log.info("Initializing AWS Boto3 session...", extra=log_extra)
     try:
+        log.debug(
+            "Initializing AWS Boto3 session...",
+            extra=log_extra
+        )
         session = boto3.Session(
             region_name=config.AWS_REGION,
             aws_access_key_id=config.AWS_ACCESS_KEY,
@@ -139,7 +170,7 @@ def _init_aws_session():
         # Test credentials by making a simple, read-only call
         test_client = session.client('sts')
         test_client.get_caller_identity()
-        log.info(
+        log.debug(
             "AWS Boto3 session created and credentials validated.",
             extra=log_extra
         )
@@ -148,11 +179,10 @@ def _init_aws_session():
     # All exceptions handled here
     except Exception as e:
         log.error(
-            f"AWS Boto3 session initialization failed: {e}",
-            extra=log_extra
+            "AWS Boto3 session initialization failed",
+            extra=get_error_log_extra(e,log_extra)
         )
-        raise ExtensionInitError(f"AWS credential validation failed: {e}") from e
-
+        raise ExtensionInitError(f"AWS credential validation failed") from e
 
 # Singleton instances for each section.
 redis_client = _init_redis_client()
