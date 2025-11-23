@@ -34,6 +34,7 @@ from errors import (
 
 # Initialize and expose the config singleton
 try:
+    from .helpers import get_error_log_extra
     from .config import config
 except ConfigLoadError as e:
     log.error(
@@ -64,7 +65,6 @@ from .backend import (
     validate_job_status_on_db,
     update_job_status_on_db
 )
-from .helpers import get_error_log_extra
 
 # Define the public APIs for the package
 __all__ = [
