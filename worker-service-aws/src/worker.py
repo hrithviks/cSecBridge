@@ -113,7 +113,7 @@ def process_job(job_payload):
         update_job_status_on_db(
             correlation_id,
             "in_progress",
-            "AWS Worker processing started."
+            "AWS worker processing started."
         )
         log.debug("Job locked and state set to in_progress.", extra=log_extra)
 
@@ -125,7 +125,7 @@ def process_job(job_payload):
         update_job_status_on_db(
             correlation_id,
             "success",
-            "AWS operation successful",
+            "AWS IAM operation successful.",
             aws_ref=aws_request_id
         )
         log.debug("Job processed and committed successfully.", extra=log_extra)
