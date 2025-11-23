@@ -160,7 +160,7 @@ def create_new_request(db_conn, redis_conn, backend_data):
                 (
                     correlation_id,
                     _INIT_STATUS,
-                    None,
+                    "API request received.",
                     backend_data['received_at']
                 )
             )
