@@ -1,15 +1,23 @@
-# Use the official Redis image based on Alpine Linux
-FROM redis:7-alpine
+# Use an official Redis image as a parent image
+FROM redis:7.2-alpine
 
 # Copy Redis configuration file into the container
 COPY redis.conf /usr/local/etc/redis/redis.conf
 
-# Update ownership for the configuration file
-RUN chown redis:redis /usr/local/etc/redis/redis.conf
+# Copy the ACL template file into the image.
+COPY users.acl.tpl /usr/local/etc/redis/users.acl.tpl
 
-# Healthcheck configuration
-HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
-    CMD redis-cli -a "$REDIS_PASSWORD" ping || exit 1
+# Copy the entrypoint script into the image's execution path and make it executable
+COPY docker-entrypoint.sh /usr/local/bin/
 
-# Entrypoint for the container
+RUN apk add --no-cache su-exec \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && chown redis:redis /data \
+    && chown redis:redis /usr/local/etc/redis/redis.conf
+
+# Set the entrypoint to the custom script
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Set the default command to run. This command is passed as arguments to the
+# entrypoint script. It uses the custom configuration file.
 CMD ["redis-server", "/usr/local/etc/redis/redis.conf"]

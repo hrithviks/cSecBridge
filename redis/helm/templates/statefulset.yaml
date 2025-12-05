@@ -53,8 +53,6 @@ spec:
           command: ["redis-server"]
           args: 
             - "/usr/local/etc/redis/redis.conf" # Load the persistence/logging config
-            - "--requirepass"
-            - "$(REDIS_PASSWORD)"
             
           ports:
             - name: redis
@@ -64,12 +62,12 @@ spec:
           # Readiness and Liveness Probes
           readinessProbe:
             exec:
-              command: ["sh", "-c", "redis-cli -a $REDIS_PASSWORD ping"]
+              command: ["sh", "-c", "redis-cli -a $REDIS_ADMIN_PASSWORD ping"]
             initialDelaySeconds: {{ .Values.statefulset.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.statefulset.probes.readiness.periodSeconds }}
           livenessProbe:
             exec:
-              command: ["sh", "-c", "redis-cli -a $REDIS_PASSWORD ping"]
+              command: ["sh", "-c", "redis-cli -a $REDIS_ADMIN_PASSWORD ping"]
             initialDelaySeconds: {{ .Values.statefulset.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.statefulset.probes.liveness.periodSeconds }}
             
@@ -77,7 +75,7 @@ spec:
             {{- toYaml .Values.statefulset.resources | nindent 12 }}
             
           env:
-            - name: REDIS_PASSWORD
+            - name: REDIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.name }}
