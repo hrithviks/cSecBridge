@@ -50,8 +50,9 @@ spec:
           imagePullPolicy: {{ .Values.statefulset.image.pullPolicy }}
           
           # The CMD points to our custom config file which enforces password and AOF.
-          command: ["redis-server"]
-          args: 
+          # command: ["redis-server"]
+          args:
+            - "redis-server"
             - "/usr/local/etc/redis/redis.conf" # Load the persistence/logging config
             
           ports:
